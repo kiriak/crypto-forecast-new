@@ -1,8 +1,7 @@
-flask
-gunicorn
-requests
+Flask
+tensorflow==2.12.0
 numpy
 pandas
-tensorflow==2.12.0
-scikit-learn
 matplotlib
+scikit-learn
+requests
