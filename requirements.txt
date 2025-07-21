@@ -1,8 +1,8 @@
-flask
+Flask==3.0.3
 requests
-numpy
 pandas
-matplotlib
+numpy
+tensorflow==2.10.0
 scikit-learn
-tensorflow-cpu==2.10.0
-
+matplotlib
+gunicorn
