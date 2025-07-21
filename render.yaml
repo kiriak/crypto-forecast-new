@@ -1,0 +1,10 @@
+
+services:
+  - type: web
+    name: crypto-forecast-dashboard
+    env: python
+    buildCommand: ""
+    startCommand: "python web_dashboard.py"
+    envVars:
+      - key: FLASK_ENV
+        value: production
