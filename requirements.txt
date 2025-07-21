@@ -1,7 +1,7 @@
-Flask
 tensorflow==2.10.0
+flask
+requests
 numpy
 pandas
 matplotlib
 scikit-learn
-requests
