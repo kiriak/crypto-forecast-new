@@ -1,7 +1,8 @@
-Flask
+flask
 requests
 numpy
 pandas
 matplotlib
 scikit-learn
-tensorflow==2.10.0
+tensorflow-cpu==2.10.0
+
