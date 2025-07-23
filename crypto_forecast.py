@@ -1,10 +1,13 @@
-
 # crypto_forecast.py
 
 import yfinance as yf
 import pandas as pd
 from prophet import Prophet
 import logging
+import os
+import sys
+from contextlib import contextmanager
+from datetime import datetime
 
 # Ρύθμιση logging για καλύτερη παρακολούθηση
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -71,10 +74,28 @@ def predict_crypto_price(ticker, df):
     # Επιστροφή του forecast DataFrame με τις στήλες ds, yhat, yhat_lower, yhat_upper
     return current_price, forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']]
 
-# Βοηθητική κλάση για την καταστολή της εξόδου του Prophet (αποφεύγει τα "The Prophet has spoken!" μηνύματα)
-import os
-import sys
-from contextlib import contextmanager
+def get_all_crypto_forecasts():
+    """
+    Συντονίζει την ανάκτηση δεδομένων και την πρόβλεψη για όλα τα καθορισμένα κρυπτονομίσματα.
+    Επιστρέφει ένα λεξικό με τα αποτελέσματα.
+    """
+    all_forecasts = {}
+    for crypto_ticker in CRYPTOS:
+        logging.info(f"Επεξεργασία κρυπτονομίσματος: {crypto_ticker}")
+        df = fetch_crypto_data(crypto_ticker)
+        if df is not None:
+            current_price, forecast_df = predict_crypto_price(crypto_ticker, df)
+            if current_price is not None and forecast_df is not None:
+                all_forecasts[crypto_ticker] = {
+                    'current_price': current_price,
+                    'forecast': forecast_df.to_dict(orient='records') # Μετατροπή σε λίστα λεξικών για εύκολη μεταφορά στο Jinja
+                }
+                logging.info(f"Πρόβλεψη για {crypto_ticker} ολοκληρώθηκε και αποθηκεύτηκε.")
+            else:
+                logging.warning(f"Αδυναμία δημιουργίας πρόβλεψης για {crypto_ticker}.")
+        else:
+            logging.warning(f"Αδυναμία ανάκτησης δεδομένων για {crypto_ticker}. Παράλειψη.")
+    return all_forecasts
 
 @contextmanager
 def suppress_stdout_stderr():
@@ -101,6 +122,8 @@ if __name__ == '__main__':
             print("Πρόβλεψη για τις επόμενες 6 μήνες (τελευταίες 5 ημέρες πρόβλεψης):")
             # Εμφάνιση μόνο των 5 τελευταίων προβλέψεων για συντομία
             for entry in data['forecast'][-5:]:
-                print(f"Ημερομηνία: {entry['ds'].split('T')[0]}, Πρόβλεψη: ${entry['yhat']:.2f}")
+                # Ελέγχουμε αν το 'ds' είναι αντικείμενο datetime πριν το μετατρέψουμε σε string
+                date_str = entry['ds'].isoformat().split('T')[0] if isinstance(entry['ds'], datetime) else str(entry['ds']).split('T')[0]
+                print(f"Ημερομηνία: {date_str}, Πρόβλεψη: ${entry['yhat']:.2f}")
     else:
         print("Δεν ήταν δυνατή η λήψη προβλέψεων.")
