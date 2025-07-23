@@ -1,10 +1,17 @@
+# render.yaml
+# Διαμόρφωση για ανάπτυξη στο Render.com
 
 services:
   - type: web
-    name: crypto-forecast-dashboard
+    name: crypto-forecast-app-el
     env: python
-    buildCommand: ""
-    startCommand: "python web_dashboard.py"
-    envVars:
-      - key: FLASK_ENV
-        value: production
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn web_dashboard:app"
+    # Η θύρα 5000 είναι η προεπιλεγμένη για το Flask
+    port: 5000
+    # Αυτόματη ανάπτυξη από το GitHub κάθε φορά που γίνεται push
+    autoDeploy: true
+    # Κλάση για δωρεάν χρήση (ή 'standard' για παραγωγή)
+    plan: free
+    # Έλεγχος υγείας για να διασφαλιστεί ότι η εφαρμογή τρέχει
+    healthCheckPath: /health
