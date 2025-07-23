@@ -15,3 +15,7 @@ services:
     plan: free
     # Έλεγχος υγείας για να διασφαλιστεί ότι η εφαρμογή τρέχει
     healthCheckPath: /health
+    # Προσθήκη έκδοσης Python για συμβατότητα
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.12 # Προτείνω 3.10.12 ή 3.9.18 ή 3.11.9
