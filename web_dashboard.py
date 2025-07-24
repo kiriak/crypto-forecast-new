@@ -25,14 +25,25 @@ def index():
         logging.info(f"Δεδομένα προβλέψεων ανακτήθηκαν. Τελευταία ενημέρωση: {last_updated}")
 
         # Μετατροπή των αντικειμένων datetime σε string για να είναι συμβατά με το JSON (για Plotly)
+        # Αυτό είναι κρίσιμο για τη μεταφορά δεδομένων από την Python στο JavaScript
+        processed_forecast_data = {}
         for ticker, data in forecast_data.items():
+            processed_forecast_data[ticker] = {
+                'current_price': data['current_price'],
+                'forecast': []
+            }
             if 'forecast' in data and data['forecast']:
                 for entry in data['forecast']:
-                    if isinstance(entry['ds'], datetime):
-                        entry['ds'] = entry['ds'].isoformat() # ISO format για JavaScript
+                    processed_forecast_data[ticker]['forecast'].append({
+                        'ds': entry['ds'].isoformat() if isinstance(entry['ds'], datetime) else str(entry['ds']),
+                        'yhat': entry['yhat'],
+                        'yhat_lower': entry['yhat_lower'],
+                        'yhat_upper': entry['yhat_upper']
+                    })
+
 
         return render_template('index.html',
-                               forecast_data=forecast_data,
+                               forecast_data=processed_forecast_data, # Χρησιμοποιούμε τα επεξεργασμένα δεδομένα
                                last_updated=last_updated)
     except Exception as e:
         logging.error(f"Σφάλμα κατά την απόδοση της σελίδας: {e}")
