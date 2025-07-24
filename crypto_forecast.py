@@ -7,7 +7,8 @@ import logging
 import os
 import sys
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timedelta
+import numpy as np # Προσθήκη για χρήση του numpy
 
 # Ρύθμιση logging για καλύτερη παρακολούθηση
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -15,26 +16,54 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 # Λίστα κρυπτονομισμάτων για πρόβλεψη
 CRYPTOS = ['BTC-USD', 'ETH-USD', 'ADA-USD', 'XRP-USD', 'SOL-USD']
 
+def generate_demo_data(ticker, days=365):
+    """
+    Δημιουργεί ψεύτικα (demo) δεδομένα τιμών για ένα κρυπτονόμισμα.
+    Χρησιμοποιείται ως fallback αν το yfinance αποτύχει.
+    """
+    logging.warning(f"Δημιουργία demo δεδομένων για {ticker}.")
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=days)
+    dates = [start_date + timedelta(days=i) for i in range(days)]
+
+    # Δημιουργία τυχαίων τιμών που μοιάζουν με τιμές κρυπτονομισμάτων
+    if "BTC" in ticker:
+        base_price = 30000
+        volatility = 500
+    elif "ETH" in ticker:
+        base_price = 2000
+        volatility = 100
+    else:
+        base_price = 0.5
+        volatility = 0.1
+
+    prices = base_price + np.cumsum(np.random.randn(days) * volatility)
+    prices = np.maximum(prices, 0.01) # Διασφάλιση θετικών τιμών
+
+    df = pd.DataFrame({'Date': dates, 'Close': prices})
+    return df
+
 def fetch_crypto_data(ticker):
     """
     Ανακτά ιστορικά δεδομένα τιμών για ένα δεδομένο κρυπτονόμισμα.
     Χρησιμοποιεί το yfinance για να τραβήξει δεδομένα για το μέγιστο δυνατό διάστημα.
+    Εάν αποτύχει, επιστρέφει demo δεδομένα.
     """
     try:
         logging.info(f"Ανάκτηση δεδομένων για: {ticker}")
         # Ανάκτηση δεδομένων για το μέγιστο δυνατό διάστημα ('max')
         data = yf.download(ticker, period="max")
         if data.empty:
-            logging.warning(f"Δεν βρέθηκαν δεδομένα για {ticker}. Ελέγξτε το σύμβολο.")
-            return None
+            logging.warning(f"Δεν βρέθηκαν πραγματικά δεδομένα για {ticker}. Επιστροφή demo δεδομένων.")
+            return generate_demo_data(ticker)
         # Χρησιμοποιούμε μόνο τη στήλη 'Close' για την πρόβλεψη
         df = data[['Close']].reset_index()
         df.columns = ['Date', 'Close']
-        logging.info(f"Επιτυχής ανάκτηση {len(df)} γραμμών δεδομένων για {ticker}.")
+        logging.info(f"Επιτυχής ανάκτηση {len(df)} γραμμών πραγματικών δεδομένων για {ticker}.")
         return df
     except Exception as e:
-        logging.error(f"Σφάλμα κατά την ανάκτηση δεδομένων για {ticker}: {e}")
-        return None
+        logging.error(f"Σφάλμα κατά την ανάκτηση πραγματικών δεδομένων για {ticker}: {e}. Επιστροφή demo δεδομένων.")
+        return generate_demo_data(ticker) # Επιστροφή demo δεδομένων σε περίπτωση σφάλματος
 
 def predict_crypto_price(ticker, df):
     """
