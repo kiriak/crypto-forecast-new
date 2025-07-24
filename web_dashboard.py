@@ -25,6 +25,7 @@ def index():
         logging.info(f"Δεδομένα προβλέψεων ανακτήθηκαν. Τελευταία ενημέρωση: {last_updated}")
 
         # Μετατροπή των αντικειμένων datetime σε string για να είναι συμβατά με το JSON (για Plotly)
+        # Αυτό είναι κρίσιμο για τη μεταφορά δεδομένων από την Python στο JavaScript
         processed_forecast_data = {}
         for ticker, data in forecast_data.items():
             processed_forecast_data[ticker] = {
