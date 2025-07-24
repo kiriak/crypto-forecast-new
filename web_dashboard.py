@@ -1,8 +1,8 @@
 # web_dashboard.py
 
-from flask import Flask, render_template, Response
+from flask import Flask, render_template, Response, jsonify # Προσθήκη jsonify
 import crypto_forecast
-import json # Προσθήκη για χειροκίνητη μετατροπή σε JSON
+import json
 from datetime import datetime
 import logging
 
@@ -14,18 +14,24 @@ app = Flask(__name__, template_folder='templates')
 @app.route('/')
 def index():
     """
-    Η κύρια διαδρομή της εφαρμογής. Ανακτά τις προβλέψεις κρυπτονομισμάτων
-    και τις αποδίδει στο αρχείο index.html.
+    Η κύρια διαδρομή της εφαρμογής. Απλώς αποδίδει το αρχικό index.html.
+    Τα δεδομένα θα ανακτηθούν μέσω API.
     """
     logging.info("Αίτημα για την κύρια σελίδα ('/').")
-    try:
-        # Λήψη όλων των προβλέψεων κρυπτονομισμάτων
-        forecast_data = crypto_forecast.get_all_crypto_forecasts()
-        last_updated = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-        logging.info(f"Δεδομένα προβλέψεων ανακτήθηκαν. Τελευταία ενημέρωση: {last_updated}")
+    # Δεν χρειάζεται να περάσουμε forecast_data εδώ, καθώς θα το φέρει το JS
+    last_updated = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    return render_template('index.html', last_updated=last_updated)
 
-        # Μετατροπή των αντικειμένων datetime σε string για να είναι συμβατά με το JSON (για Plotly)
-        # Αυτό είναι κρίσιμο για τη μεταφορά δεδομένων από την Python στο JavaScript
+@app.route('/api/forecast_data')
+def get_forecast_data():
+    """
+    Νέο API endpoint για την ανάκτηση δεδομένων πρόβλεψης σε μορφή JSON.
+    """
+    logging.info("Αίτημα για δεδομένα API ('/api/forecast_data').")
+    try:
+        forecast_data = crypto_forecast.get_all_crypto_forecasts()
+
+        # Μετατροπή των αντικειμένων datetime σε string για να είναι συμβατά με το JSON
         processed_forecast_data = {}
         for ticker, data in forecast_data.items():
             processed_forecast_data[ticker] = {
@@ -40,18 +46,13 @@ def index():
                         'yhat_lower': entry['yhat_lower'],
                         'yhat_upper': entry['yhat_upper']
                     })
-
-        # Χειροκίνητη μετατροπή σε JSON string εδώ
-        # Αυτό διασφαλίζει ότι το JSON είναι σωστά διαμορφωμένο πριν περάσει στο template
-        json_forecast_data = json.dumps(processed_forecast_data)
-
-        return render_template('index.html',
-                               forecast_data_json=json_forecast_data, # Περιμένουμε JSON string
-                               last_updated=last_updated)
+        
+        # Επιστροφή των επεξεργασμένων δεδομένων ως JSON response
+        logging.info("Επιτυχής επιστροφή δεδομένων πρόβλεψης ως JSON.")
+        return jsonify(processed_forecast_data)
     except Exception as e:
-        logging.error(f"Σφάλμα κατά την απόδοση της σελίδας: {e}")
-        # Επιστροφή μιας σελίδας σφάλματος ή ενός απλού μηνύματος
-        return render_template('error.html', error_message=f"Προέκυψε σφάλμα: {e}")
+        logging.error(f"Σφάλμα κατά την ανάκτηση δεδομένων API: {e}")
+        return jsonify({"error": "Failed to retrieve forecast data", "details": str(e)}), 500
 
 @app.route('/health')
 def health_check():
