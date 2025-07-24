@@ -2,7 +2,7 @@
 
 from flask import Flask, render_template, Response
 import crypto_forecast
-import json
+import json # Προσθήκη για χειροκίνητη μετατροπή σε JSON
 from datetime import datetime
 import logging
 
@@ -25,7 +25,6 @@ def index():
         logging.info(f"Δεδομένα προβλέψεων ανακτήθηκαν. Τελευταία ενημέρωση: {last_updated}")
 
         # Μετατροπή των αντικειμένων datetime σε string για να είναι συμβατά με το JSON (για Plotly)
-        # Αυτό είναι κρίσιμο για τη μεταφορά δεδομένων από την Python στο JavaScript
         processed_forecast_data = {}
         for ticker, data in forecast_data.items():
             processed_forecast_data[ticker] = {
@@ -41,9 +40,12 @@ def index():
                         'yhat_upper': entry['yhat_upper']
                     })
 
+        # Χειροκίνητη μετατροπή σε JSON string εδώ
+        # Αυτό διασφαλίζει ότι το JSON είναι σωστά διαμορφωμένο πριν περάσει στο template
+        json_forecast_data = json.dumps(processed_forecast_data)
 
         return render_template('index.html',
-                               forecast_data=processed_forecast_data, # Χρησιμοποιούμε τα επεξεργασμένα δεδομένα
+                               forecast_data_json=json_forecast_data, # Περιμένουμε JSON string
                                last_updated=last_updated)
     except Exception as e:
         logging.error(f"Σφάλμα κατά την απόδοση της σελίδας: {e}")
