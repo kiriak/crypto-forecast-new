@@ -19,7 +19,29 @@ def index():
     """
     logging.info("Αίτημα για την κύρια σελίδα ('/').")
     last_updated = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-    return render_template('index.html', last_updated=last_updated)
+    # Περνάμε το dictionary forecast_data απευθείας στο template
+    # Θα το μετατρέψουμε σε JSON στο index.html
+    forecast_data = crypto_forecast.get_all_crypto_forecasts()
+    
+    # Μετατροπή των αντικειμένων datetime σε string για να είναι συμβατά με το JSON
+    processed_forecast_data = {}
+    for ticker, data in forecast_data.items():
+        processed_forecast_data[ticker] = {
+            'current_price': data['current_price'],
+            'forecast': []
+        }
+        if 'forecast' in data and data['forecast']:
+            for entry in data['forecast']:
+                processed_forecast_data[ticker]['forecast'].append({
+                    'ds': entry['ds'].isoformat() if isinstance(entry['ds'], datetime) else str(entry['ds']),
+                    'yhat': entry['yhat'],
+                    'yhat_lower': entry['yhat_lower'],
+                    'yhat_upper': entry['yhat_upper']
+                })
+
+    return render_template('index.html', 
+                           last_updated=last_updated,
+                           forecast_data=processed_forecast_data) # Περνάμε το dictionary εδώ
 
 @app.route('/api/forecast_data')
 def get_forecast_data():
