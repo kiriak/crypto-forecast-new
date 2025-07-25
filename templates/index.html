@@ -131,7 +131,7 @@
 <p class="p4"><span class="s1"><span class="Apple-converted-space">    </span>{# Ενσωμάτωση των δεδομένων πρόβλεψης ως JSON σε ένα script tag με type="application/json" #}</span></p>
 <p class="p4"><span class="s1"><span class="Apple-converted-space">    </span>{# Αυτό το block δεν εκτελείται ως JavaScript, είναι απλά δεδομένα #}</span></p>
 <p class="p3"><span class="s4"><span class="Apple-converted-space">    </span></span><span class="s3">&lt;</span><span class="s6">script</span><span class="s4"> </span><span class="s2">type</span><span class="s3">=</span><span class="s1">"application/json"</span><span class="s4"> </span><span class="s2">id</span><span class="s3">=</span><span class="s1">"forecast-data-json"</span><span class="s3">&gt;</span></p>
-<p class="p4"><span class="s1"><span class="Apple-converted-space">        </span>{{ forecast_data | tojson | safe }}</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">        </span>{{ forecast_data | tojson }}</span></p>
 <p class="p1"><span class="s4"><span class="Apple-converted-space">    </span></span><span class="s3">&lt;/</span><span class="s1">script</span><span class="s3">&gt;</span></p>
 <p class="p6"><span class="s11"></span><br></p>
 <p class="p1"><span class="s4"><span class="Apple-converted-space">    </span></span><span class="s3">&lt;</span><span class="s1">script</span><span class="s3">&gt;</span></p>
@@ -329,8 +329,7 @@
 <p class="p4"><span class="s1"><span class="Apple-converted-space">                </span></span><span class="s7">}</span></p>
 <p class="p4"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s7">}</span></p>
 <p class="p6"><span class="s11"></span><br></p>
-<p class="p5"><span class="s4"><span class="Apple-converted-space">            </span></span><span class="s1">// Φόρτωση δεδομένων από το API</span></p>
-<p class="p5"><span class="s4"><span class="Apple-converted-space">            </span></span><span class="s1">// Πρώτα προσπαθούμε να φορτώσουμε από το ενσωματωμένο JSON (CSP-friendly)</span></p>
+<p class="p5"><span class="s4"><span class="Apple-converted-space">            </span></span><span class="s1">// Φόρτωση δεδομένων από το ενσωματωμένο JSON (CSP-friendly)</span></p>
 <p class="p4"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s10">const</span><span class="s1"> forecastDataElement </span><span class="s7">=</span><span class="s1"> document</span><span class="s7">.</span><span class="s1">getElementById</span><span class="s7">(</span><span class="s8">'forecast-data-json'</span><span class="s7">);</span></p>
 <p class="p4"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s10">if</span><span class="s1"> </span><span class="s7">(</span><span class="s1">forecastDataElement </span><span class="s7">&amp;&amp;</span><span class="s1"> forecastDataElement</span><span class="s7">.</span><span class="s1">textContent</span><span class="s7">.</span><span class="s1">trim</span><span class="s7">().</span><span class="s1">length </span><span class="s7">&gt;</span><span class="s1"> </span><span class="s13">0</span><span class="s7">)</span><span class="s1"> </span><span class="s7">{</span></p>
 <p class="p4"><span class="s1"><span class="Apple-converted-space">                </span></span><span class="s10">try</span><span class="s1"> </span><span class="s7">{</span></p>
