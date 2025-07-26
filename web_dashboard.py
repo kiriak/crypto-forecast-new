@@ -2,10 +2,11 @@
 
 from flask import Flask, render_template, Response
 import crypto_forecast
-import json # Still needed for potential future use or if jsonify is explicitly used
+import json
 from datetime import datetime
 import logging
 import pandas as pd # Import pandas for Timestamp check
+import base64 # Import base64 for encoding
 
 # Configure logging for the Flask application
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -26,8 +27,6 @@ def index():
         logging.info(f"Forecast data retrieved. Last updated: {last_updated}")
 
         # Process data to ensure datetime objects are converted to ISO format strings
-        # This is done here to ensure the data is JSON-serializable for both Jinja's tojson
-        # and direct Python usage if needed.
         processed_forecast_data = {}
         for ticker, data in forecast_data.items():
             processed_forecast_data[ticker] = {
@@ -50,10 +49,18 @@ def index():
                         'yhat_upper': entry['yhat_upper']
                     })
 
-        # Pass the processed_forecast_data directly. Jinja's tojson filter will handle the conversion
-        # and safe escaping within the template.
+        # --- ΝΕΟ: Κωδικοποίηση των δεδομένων JSON σε Base64 ---
+        # Μετατροπή του dictionary σε JSON string
+        json_string = json.dumps(processed_forecast_data)
+        # Κωδικοποίηση του JSON string σε Base64
+        # Χρησιμοποιούμε .encode('utf-8') για να μετατρέψουμε το string σε bytes
+        # και .decode('utf-8') για να μετατρέψουμε το Base64 bytes πίσω σε string για το template
+        encoded_forecast_data = base64.b64encode(json_string.encode('utf-8')).decode('utf-8')
+        logging.info("Forecast data encoded to Base64.")
+
         return render_template('index.html',
-                               forecast_data=processed_forecast_data, # For the Jinja2 table
+                               forecast_data=processed_forecast_data, # Για τον πίνακα Jinja2
+                               encoded_forecast_data=encoded_forecast_data, # Για το JavaScript (Base64)
                                last_updated=last_updated)
     except Exception as e:
         logging.error(f"Σφάλμα κατά την απόδοση της σελίδας: {e}")
