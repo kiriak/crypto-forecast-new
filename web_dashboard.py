@@ -19,29 +19,47 @@ def index():
     """
     logging.info("Αίτημα για την κύρια σελίδα ('/').")
     last_updated = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-    # Περνάμε το dictionary forecast_data απευθείας στο template
-    # Θα το μετατρέψουμε σε JSON στο index.html
-    forecast_data = crypto_forecast.get_all_crypto_forecasts()
     
-    # Μετατροπή των αντικειμένων datetime σε string για να είναι συμβατά με το JSON
-    processed_forecast_data = {}
-    for ticker, data in forecast_data.items():
-        processed_forecast_data[ticker] = {
-            'current_price': data['current_price'],
-            'forecast': []
-        }
-        if 'forecast' in data and data['forecast']:
-            for entry in data['forecast']:
-                processed_forecast_data[ticker]['forecast'].append({
-                    'ds': entry['ds'].isoformat() if isinstance(entry['ds'], datetime) else str(entry['ds']),
-                    'yhat': entry['yhat'],
-                    'yhat_lower': entry['yhat_lower'],
-                    'yhat_upper': entry['yhat_upper']
-                })
+    # Προσπαθούμε να πάρουμε τα δεδομένα πρόβλεψης για να τα περάσουμε στο template
+    # ακόμα και αν το API endpoint θα τα ανακτήσει ξανά.
+    # Αυτό είναι για την περίπτωση που θέλουμε να ενσωματώσουμε τα δεδομένα απευθείας στο HTML.
+    # Προς το παρόν, το index.html θα τα τραβήξει μέσω API, αλλά το Flask χρειάζεται
+    # να περάσει κάτι για το {{ forecast_data | tojson | safe }}
+    try:
+        logging.info("Καλώντας crypto_forecast.get_all_crypto_forecasts() για αρχική φόρτωση.")
+        forecast_data_for_template = crypto_forecast.get_all_crypto_forecasts()
+        logging.info("Ολοκληρώθηκε η κλήση crypto_forecast.get_all_crypto_forecasts().")
+
+        # Μετατροπή των αντικειμένων datetime σε string για να είναι συμβατά με το JSON
+        processed_forecast_data_for_template = {}
+        for ticker, data in forecast_data_for_template.items():
+            processed_forecast_data_for_template[ticker] = {
+                'current_price': data['current_price'],
+                'forecast': []
+            }
+            if 'forecast' in data and data['forecast']:
+                for entry in data['forecast']:
+                    # Ελέγξτε αν το 'ds' είναι αντικείμενο datetime ή Timestamp πριν το isoformat
+                    ds_value = entry['ds']
+                    if isinstance(ds_value, datetime) or isinstance(ds_value, pd.Timestamp):
+                        ds_value = ds_value.isoformat()
+                    else:
+                        ds_value = str(ds_value) # Fallback σε string αν δεν είναι datetime
+                    
+                    processed_forecast_data_for_template[ticker]['forecast'].append({
+                        'ds': ds_value,
+                        'yhat': entry['yhat'],
+                        'yhat_lower': entry['yhat_lower'],
+                        'yhat_upper': entry['yhat_upper']
+                    })
+        logging.info("Ολοκληρώθηκε η επεξεργασία δεδομένων για το template.")
+    except Exception as e:
+        logging.error(f"Σφάλμα κατά την προετοιμασία δεδομένων για το template: {e}")
+        processed_forecast_data_for_template = {} # Επιστροφή κενού dictionary σε περίπτωση σφάλματος
 
     return render_template('index.html', 
                            last_updated=last_updated,
-                           forecast_data=processed_forecast_data) # Περνάμε το dictionary εδώ
+                           forecast_data=processed_forecast_data_for_template)
 
 @app.route('/api/forecast_data')
 def get_forecast_data():
@@ -50,7 +68,9 @@ def get_forecast_data():
     """
     logging.info("Αίτημα για δεδομένα API ('/api/forecast_data').")
     try:
+        logging.info("Καλώντας crypto_forecast.get_all_crypto_forecasts() για API.")
         forecast_data = crypto_forecast.get_all_crypto_forecasts()
+        logging.info("Ολοκληρώθηκε η κλήση crypto_forecast.get_all_crypto_forecasts() για API.")
 
         # Μετατροπή των αντικειμένων datetime σε string για να είναι συμβατά με το JSON
         processed_forecast_data = {}
@@ -61,17 +81,24 @@ def get_forecast_data():
             }
             if 'forecast' in data and data['forecast']:
                 for entry in data['forecast']:
+                    # Ελέγξτε αν το 'ds' είναι αντικείμενο datetime ή Timestamp πριν το isoformat
+                    ds_value = entry['ds']
+                    if isinstance(ds_value, datetime) or isinstance(ds_value, pd.Timestamp):
+                        ds_value = ds_value.isoformat()
+                    else:
+                        ds_value = str(ds_value) # Fallback σε string αν δεν είναι datetime
+                    
                     processed_forecast_data[ticker]['forecast'].append({
-                        'ds': entry['ds'].isoformat() if isinstance(entry['ds'], datetime) else str(entry['ds']),
+                        'ds': ds_value,
                         'yhat': entry['yhat'],
                         'yhat_lower': entry['yhat_lower'],
                         'yhat_upper': entry['yhat_upper']
                     })
         
-        logging.info("Επιτυχής επιστροφή δεδομένων πρόβλεψης ως JSON.")
+        logging.info("Επιτυχής επεξεργασία δεδομένων πρόβλεψης σε JSON.")
         return jsonify(processed_forecast_data)
     except Exception as e:
-        logging.error(f"Σφάλμα κατά την ανάκτηση δεδομένων API: {e}")
+        logging.error(f"Σφάλμα κατά την ανάκτηση ή επεξεργασία δεδομένων API: {e}")
         return jsonify({"error": "Failed to retrieve forecast data", "details": str(e)}), 500
 
 @app.route('/health')
