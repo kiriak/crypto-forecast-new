@@ -21,8 +21,6 @@ def index():
     logging.info("Request for the main page ('/').")
     try:
         # Retrieve all cryptocurrency forecasts
-        # Θα καλέσουμε το crypto_forecast.get_all_crypto_forecasts() εδώ
-        # για να δούμε αν αυτό προκαλεί το πρόβλημα.
         forecast_data = crypto_forecast.get_all_crypto_forecasts()
         last_updated = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
         logging.info(f"Forecast data retrieved. Last updated: {last_updated}")
