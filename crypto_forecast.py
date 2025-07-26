@@ -1,49 +1,52 @@
-import yfinance as yf
+import yfinance as yf # Ακόμα χρειάζεται για την εγκατάσταση, αλλά δεν χρησιμοποιείται για λήψη δεδομένων
 from prophet import Prophet
 import pandas as pd
 from datetime import date, timedelta
 import logging
-import json # Προσθήκη για χειρισμό JSONDecodeError
+import json
 
 # Ρύθμιση logging για το module
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def get_crypto_data(ticker="BTC-USD", period="6mo"):
-    """
-    Ανακτά ιστορικά δεδομένα κρυπτονομισμάτων από το Yahoo Finance.
-    Προσθέτει χειρισμό σφαλμάτων και επιστρέφει κενό DataFrame σε περίπτωση αποτυχίας.
-    """
-    try:
-        data = yf.download(ticker, period=period, progress=False, actions=False) # progress=False, actions=False για λιγότερο verbose output
-        if data.empty:
-            logging.warning(f"Δεν βρέθηκαν δεδομένα για {ticker} από το yfinance. Επιστροφή κενού DataFrame.")
-            return pd.DataFrame()
-        
-        # Ελέγξτε αν η στήλη 'Close' υπάρχει και δεν είναι κενή
-        if 'Close' not in data.columns or data['Close'].empty:
-            logging.warning(f"Η στήλη 'Close' δεν βρέθηκε ή είναι κενή για {ticker}. Επιστροφή κενού DataFrame.")
-            return pd.DataFrame()
+# Αφαιρούμε την get_crypto_data καθώς δεν θα χρησιμοποιούμε πλέον yfinance για λήψη δεδομένων
 
-        logging.info(f"Επιτυχής ανάκτηση δεδομένων για {ticker}.")
-        return data
-    except json.JSONDecodeError as e:
-        logging.error(f"JSONDecodeError κατά την ανάκτηση δεδομένων για {ticker}: {e}. Πιθανώς λανθασμένη απάντηση από τον server.")
-        return pd.DataFrame()
-    except Exception as e:
-        logging.error(f"Γενικό σφάλμα κατά την ανάκτηση δεδομένων για {ticker}: {e}")
-        return pd.DataFrame()
-
-def create_demo_data(start_date, end_date):
+def create_demo_data(ticker, start_date, end_date):
     """
-    Δημιουργεί demo δεδομένα για δοκιμαστικούς σκοπούς.
+    Δημιουργεί demo δεδομένα για δοκιμαστικούς σκοπούς, προσομοιώνοντας ιστορικές τιμές.
+    Προστίθεται μια μικρή διακύμανση ανάλογα με το ticker.
     """
-    logging.warning("Δημιουργία demo δεδομένων.")
+    logging.info(f"Δημιουργία demo δεδομένων για {ticker}.")
     dates = pd.date_range(start=start_date, end=end_date, freq='D')
+    
+    base_price = 0
+    if ticker == "BTC-USD":
+        base_price = 20000
+        volatility = 500
+    elif ticker == "ETH-USD":
+        base_price = 1500
+        volatility = 100
+    elif ticker == "SOL-USD":
+        base_price = 30
+        volatility = 5
+    else:
+        base_price = 100
+        volatility = 10
+
+    # Δημιουργία πιο ρεαλιστικών demo δεδομένων
+    prices = []
+    current_val = base_price
+    for i in range(len(dates)):
+        change = (i % 20 - 10) * (volatility / 100) + (i / 365) * (base_price / 10) # Τάση + διακύμανση
+        current_val += change
+        prices.append(max(1, current_val)) # Να μην πέφτει κάτω από 1
+    
     data = {
-        'ds': dates,
-        'y': [100 + i * 0.5 + (i % 10 - 5) * 2 for i in range(len(dates))]
+        'Date': dates,
+        'Close': prices
     }
     df = pd.DataFrame(data)
+    df = df.set_index('Date') # Ορισμός της ημερομηνίας ως index
+    logging.info(f"Επιτυχής δημιουργία demo δεδομένων για {ticker}.")
     return df
 
 def train_and_predict(df):
@@ -91,30 +94,25 @@ def train_and_predict(df):
 def get_all_crypto_forecasts():
     """
     Ανακτά δεδομένα και κάνει προβλέψεις για μια λίστα κρυπτονομισμάτων.
+    Τώρα χρησιμοποιεί μόνο demo δεδομένα για να αποφύγει προβλήματα με το yfinance.
     """
     cryptos = ["BTC-USD", "ETH-USD", "SOL-USD"]
     all_forecasts = {}
 
-    for ticker in cryptos:
-        logging.info(f"Επεξεργασία {ticker}...")
-        data = get_crypto_data(ticker)
-        
-        # Αν δεν βρεθούν πραγματικά δεδομένα ή είναι όλα NaN, χρησιμοποιήστε demo δεδομένα
-        if data.empty or 'Close' not in data.columns or data['Close'].isnull().all():
-            logging.warning(f"Δεν βρέθηκαν πραγματικά δεδομένα ή είναι όλα NaN για {ticker}. Επιστροφή demo δεδομένων.")
-            end_date = date.today()
-            start_date = end_date - timedelta(days=365 * 2) # 2 χρόνια demo δεδομένων
-            demo_df = create_demo_data(start_date, end_date)
-            demo_df = demo_df.rename(columns={'ds': 'Date', 'y': 'Close'}).set_index('Date')
-            data = demo_df
+    end_date = date.today()
+    start_date = end_date - timedelta(days=365 * 2) # 2 χρόνια demo δεδομένων
 
-        # Λήψη της τρέχουσας τιμής (τελευταία διαθέσιμη τιμή)
-        # Ελέγξτε αν το DataFrame είναι κενό ή αν η τελευταία τιμή είναι NaN
+    for ticker in cryptos:
+        logging.info(f"Επεξεργασία {ticker} με demo δεδομένα...")
+        # Χρησιμοποιούμε πάντα demo δεδομένα
+        data = create_demo_data(ticker, start_date, end_date)
+        
+        # Λήψη της τρέχουσας τιμής (τελευταία διαθέσιμη τιμή από τα demo δεδομένα)
         current_price = 0
         if not data.empty and 'Close' in data.columns and not data['Close'].isnull().iloc[-1]:
             current_price = data['Close'].iloc[-1]
         else:
-            logging.warning(f"Αδυναμία ανάκτησης τρέχουσας τιμής για {ticker}. Ορίζεται σε 0.")
+            logging.warning(f"Αδυναμία ανάκτησης τρέχουσας τιμής από demo δεδομένα για {ticker}. Ορίζεται σε 0.")
 
         # Εκπαίδευση και πρόβλεψη
         forecast_df = train_and_predict(data)
