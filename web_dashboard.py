@@ -2,9 +2,10 @@
 
 from flask import Flask, render_template, Response
 import crypto_forecast
-import json # Import the json module
+import json # Still needed for potential future use or if jsonify is explicitly used
 from datetime import datetime
 import logging
+import pandas as pd # Import pandas for Timestamp check
 
 # Configure logging for the Flask application
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -24,8 +25,9 @@ def index():
         last_updated = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
         logging.info(f"Forecast data retrieved. Last updated: {last_updated}")
 
-        # Convert datetime objects to string for JSON compatibility (for Plotly)
-        # This is crucial for transferring data from Python to JavaScript
+        # Process data to ensure datetime objects are converted to ISO format strings
+        # This is done here to ensure the data is JSON-serializable for both Jinja's tojson
+        # and direct Python usage if needed.
         processed_forecast_data = {}
         for ticker, data in forecast_data.items():
             processed_forecast_data[ticker] = {
@@ -34,12 +36,12 @@ def index():
             }
             if 'forecast' in data and data['forecast']:
                 for entry in data['forecast']:
-                    # Check if 'ds' is a datetime or Timestamp object before isoformat
                     ds_value = entry['ds']
-                    if isinstance(ds_value, datetime) or isinstance(ds_value, pd.Timestamp):
+                    # Convert pandas Timestamp or datetime objects to ISO format string
+                    if isinstance(ds_value, (datetime, pd.Timestamp)):
                         ds_value = ds_value.isoformat()
                     else:
-                        ds_value = str(ds_value) # Fallback to string if not datetime
+                        ds_value = str(ds_value) # Fallback to string if not datetime/Timestamp
                     
                     processed_forecast_data[ticker]['forecast'].append({
                         'ds': ds_value,
@@ -48,13 +50,10 @@ def index():
                         'yhat_upper': entry['yhat_upper']
                     })
 
-        # Manually convert to JSON string here
-        # This ensures the JSON is correctly formatted before passing to the template
-        json_forecast_data_string = json.dumps(processed_forecast_data)
-
+        # Pass the processed_forecast_data directly. Jinja's tojson filter will handle the conversion
+        # and safe escaping within the template.
         return render_template('index.html',
                                forecast_data=processed_forecast_data, # For the Jinja2 table
-                               forecast_data_json_string=json_forecast_data_string, # For JavaScript
                                last_updated=last_updated)
     except Exception as e:
         logging.error(f"Error rendering the page: {e}")
