@@ -1,7 +1,7 @@
 # web_dashboard.py
 
 from flask import Flask, render_template, Response, jsonify
-import crypto_forecast
+import crypto_forecast # Ακόμα το εισάγουμε για το /api/forecast_data
 import json
 from datetime import datetime
 import logging
@@ -15,10 +15,9 @@ app = Flask(__name__, template_folder='templates')
 def index():
     """
     Η κύρια διαδρομή της εφαρμογής. Επιστρέφει ένα απλό μήνυμα για δοκιμή.
+    ΔΕΝ ΚΑΛΕΙ το crypto_forecast.get_all_crypto_forecasts() εδώ.
     """
     logging.info("Αίτημα για την κύρια σελίδα ('/'). Επιστρέφω απλό κείμενο.")
-    # Αυτή τη φορά, δεν καλούμε καν το crypto_forecast.get_all_crypto_forecasts() εδώ,
-    # για να αποκλείσουμε οποιοδήποτε πρόβλημα με την προετοιμασία δεδομένων για το template.
     return "Η εφαρμογή Flask λειτουργεί! Αυτή είναι μια πολύ απλή δοκιμή."
 
 @app.route('/api/forecast_data')
