@@ -1,6 +1,6 @@
 import os
 import logging
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify, make_response
 from crypto_forecast import get_crypto_data, generate_forecast_plot
 import datetime
 from plotly.offline import plot
@@ -43,19 +43,26 @@ def create_error_plot(error_message):
     )
     return fig
 
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/', methods=['GET'])
 def index():
     logging.info("Request for the main page ('/'). Rendering index.html.")
-    
     now = datetime.datetime.now()
     last_updated_time = now.strftime("%Y-%m-%d %H:%M:%S")
 
-    selected_coin = request.form.get('coin_symbol', 'BTC-USD')
-    plot_html = None
-    error_message = None
+    # Initial page load, no plot yet
+    return render_template(
+        'index.html',
+        plot_html=None,
+        last_updated=last_updated_time,
+        current_coin='BTC-USD'
+    )
+
+@app.route('/forecast', methods=['POST'])
+def forecast():
+    logging.info("Request for a new forecast received.")
     
-    # Προσθήκη μικρής καθυστέρησης για να αποφευχθούν τα σφάλματα 'Too Many Requests'
-    time.sleep(2)
+    selected_coin = request.json.get('coin_symbol', 'BTC-USD')
+    logging.info(f"Generating forecast for: {selected_coin}")
 
     try:
         # Step 1: Get the data
@@ -66,6 +73,7 @@ def index():
             logging.error(error_message)
             fig = create_error_plot(error_message)
             plot_html = plot(fig, output_type='div', include_plotlyjs=True, config={'displayModeBar': False})
+            return jsonify({'plot_html': plot_html, 'error': error_message})
         else:
             # Step 2: Generate the plot
             fig = generate_forecast_plot(data, symbol=selected_coin)
@@ -78,21 +86,14 @@ def index():
                 config={'displayModeBar': False}
             )
             logging.info("Η HTML του γραφήματος δημιουργήθηκε με επιτυχία.")
+            return jsonify({'plot_html': plot_html, 'error': None})
 
     except Exception as e:
         logging.error(f"Σφάλμα κατά τη δημιουργία του γραφήματος: {e}")
         error_message = str(e)
         fig = create_error_plot(error_message)
         plot_html = plot(fig, output_type='div', include_plotlyjs=True, config={'displayModeBar': False})
-
-
-    return render_template(
-        'index.html',
-        plot_html=plot_html,
-        last_updated=last_updated_time,
-        current_coin=selected_coin,
-        error=error_message
-    )
+        return jsonify({'plot_html': plot_html, 'error': error_message})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=PORT, debug=False)
