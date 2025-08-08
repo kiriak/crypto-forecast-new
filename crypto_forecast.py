@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 def get_crypto_data(symbol: str = "BTC-USD", days: int = 365):
     """
-    Ανακτά δεδομένα κρυπτονομισμάτων από την CoinGecko API με εκθετικό backoff.
+    Ανακτά δεδομένα κρυπτονομισμάτων από την CoinGecko API με εκθετικό backoff για επαναλήψεις.
 
     Args:
         symbol (str): Το σύμβολο του κρυπτονομίσματος (π.χ. "BTC-USD").
@@ -39,8 +39,10 @@ def get_crypto_data(symbol: str = "BTC-USD", days: int = 365):
     
     logging.info(f"Ανάκτηση δεδομένων για το σύμβολο: {coingecko_id} από την CoinGecko API")
     max_retries = 5
-    retries = 0
-    while retries < max_retries:
+    # Ξεκινάμε τον χρόνο αναμονής από 5 δευτερόλεπτα
+    wait_time = 5
+    
+    for retries in range(max_retries):
         try:
             response = requests.get(api_url, timeout=10)
             response.raise_for_status()  # Θα προκαλέσει σφάλμα για μη επιτυχημένες απαντήσεις (π.χ. 404, 500)
@@ -60,10 +62,11 @@ def get_crypto_data(symbol: str = "BTC-USD", days: int = 365):
             return df
             
         except requests.exceptions.RequestException as e:
-            retries += 1
             logging.warning(f"Αποτυχία λήψης δεδομένων από την CoinGecko: {e}")
-            logging.info(f"Επαναπροσπάθεια σε {2 ** retries} δευτερόλεπτα... (Προσπάθεια {retries}/{max_retries})")
-            time.sleep(2 ** retries)  # Εκθετικό backoff
+            if retries < max_retries - 1:
+                logging.info(f"Επαναπροσπάθεια σε {wait_time} δευτερόλεπτα... (Προσπάθεια {retries + 1}/{max_retries})")
+                time.sleep(wait_time)  # Στατική αναμονή για μεγαλύτερη καθυστέρηση
+                wait_time *= 2  # Αυξάνουμε τον χρόνο αναμονής για την επόμενη φορά
             
     logging.error(f"Αποτυχία λήψης δεδομένων για το {symbol} μετά από {max_retries} προσπάθειες.")
     return None
