@@ -1,8 +1,9 @@
 import os
 import logging
 from flask import Flask, render_template, request
-from crypto_forecast import get_prediction_plot
+from crypto_forecast import get_crypto_data, generate_forecast_plot # Ενημερωμένη εισαγωγή
 import datetime
+from plotly.offline import plot # Χρειάζεται να εισάγουμε και το plot
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -22,27 +23,43 @@ else:
 def index():
     logging.info("Request for the main page ('/'). Rendering index.html.")
     
-    # Get the current time for the "last updated" message
     now = datetime.datetime.now()
     last_updated_time = now.strftime("%Y-%m-%d %H:%M:%S")
 
-    # Call the function to get the prediction plot as HTML
-    # We pass a default coin if no form data is submitted yet.
     selected_coin = request.form.get('coin_symbol', 'BTC-USD')
+    plot_html = None
+    error_message = None
+
     try:
-        plot_html = get_prediction_plot(selected_coin)
-        logging.info("Successfully generated prediction plot HTML.")
+        # Step 1: Get the data
+        data = get_crypto_data(symbol=selected_coin)
+        
+        if data is None or data.empty:
+            error_message = f"No data found for the symbol: {selected_coin}."
+            logging.error(error_message)
+        else:
+            # Step 2: Generate the plot
+            fig = generate_forecast_plot(data, symbol=selected_coin)
+            
+            # Step 3: Convert the plot to HTML
+            plot_html = plot(
+                fig,
+                output_type='div',
+                include_plotlyjs=True,
+                config={'displayModeBar': False}
+            )
+            logging.info("Successfully generated prediction plot HTML.")
+
     except Exception as e:
         logging.error(f"Error generating plot: {e}")
-        plot_html = None
-        # You might want to render an error page here instead
-        return render_template('error.html', error=str(e), last_updated=last_updated_time)
+        error_message = str(e)
 
     return render_template(
         'index.html',
         plot_html=plot_html,
         last_updated=last_updated_time,
-        current_coin=selected_coin
+        current_coin=selected_coin,
+        error=error_message
     )
 
 if __name__ == '__main__':
