@@ -1,123 +1,86 @@
-import yfinance as yf
-from prophet import Prophet
 import pandas as pd
+import yfinance as yf
 import plotly.graph_objects as go
-from plotly.offline import plot
 import logging
-from datetime import date, timedelta
+import time
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Ρυθμίσεις για την καταγραφή (logging)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def get_prediction_plot(symbol):
+def get_crypto_data(symbol: str = "BTC-USD", period: str = "1y", interval: str = "1d"):
     """
-    Fetches historical data for a given cryptocurrency symbol,
-    trains a Prophet model, makes a 30-day forecast, and
-    returns the Plotly plot as an HTML string.
-
+    Ανακτά δεδομένα κρυπτονομισμάτων χρησιμοποιώντας το yfinance με exponential backoff για επαναλήψεις.
     Args:
-        symbol (str): The cryptocurrency symbol (e.g., 'BTC-USD').
-
+        symbol (str): Το σύμβολο του κρυπτονομίσματος (ticker).
+        period (str): Η χρονική περίοδος για τα δεδομένα (π.χ. "1y").
+        interval (str): Το χρονικό διάστημα των δεδομένων (π.χ. "1d").
     Returns:
-        str: An HTML string of the Plotly graph.
+        pd.DataFrame: Ένα DataFrame με τα δεδομένα του κρυπτονομίσματος ή None αν η ανάκτηση αποτύχει.
     """
-    logging.info(f"Fetching data for symbol: {symbol}")
+    logging.info(f"Ανάκτηση δεδομένων για το σύμβολο: {symbol}")
+    max_retries = 5
+    retries = 0
+    while retries < max_retries:
+        try:
+            # Προσπάθεια λήψης δεδομένων
+            data = yf.download(symbol, period=period, interval=interval)
+            
+            if data.empty:
+                logging.error(f"Δεν βρέθηκαν δεδομένα για το καθορισμένο σύμβολο: {symbol}")
+                return None
+
+            return data
+        except Exception as e:
+            retries += 1
+            logging.warning(f"Αποτυχία λήψης ticker '{symbol}' λόγω: {e}")
+            logging.info(f"Επαναπροσπάθεια σε {2 ** retries} δευτερόλεπτα... (Προσπάθεια {retries}/{max_retries})")
+            time.sleep(2 ** retries)  # Exponential backoff
     
+    logging.error(f"Αποτυχία λήψης δεδομένων για το {symbol} μετά από {max_retries} προσπάθειες.")
+    return None
+
+def generate_forecast_plot(df: pd.DataFrame, symbol: str = "BTC-USD"):
+    """
+    Δημιουργεί ένα Plotly candlestick γράφημα για το δεδομένο DataFrame.
+    Args:
+        df (pd.DataFrame): DataFrame που περιέχει τα δεδομένα του κρυπτονομίσματος.
+        symbol (str): Το σύμβολο του κρυπτονομίσματος.
+    Returns:
+        plotly.graph_objects.Figure: Ένα αντικείμενο Plotly figure.
+    """
+    logging.info("Δημιουργία γραφήματος")
+    fig = go.Figure(data=[go.Candlestick(x=df.index,
+                                        open=df['Open'],
+                                        high=df['High'],
+                                        low=df['Low'],
+                                        close=df['Close'])])
+
+    fig.update_layout(title=f"Ιστορικά Δεδομένα για {symbol}",
+                      yaxis_title="Τιμή (USD)",
+                      xaxis_title="Ημερομηνία",
+                      xaxis_rangeslider_visible=True,
+                      template="plotly_dark") # Χρησιμοποιούμε σκούρο θέμα για μοντέρνα εμφάνιση
+    return fig
+
+# Κύρια συνάρτηση για την εκτέλεση του script
+def main():
     try:
-        data = yf.download(symbol, period="max", interval="1d")
-        if data.empty:
-            logging.error(f"No data found for symbol: {symbol}")
-            raise ValueError("No data found for the specified symbol.")
+        # Βήμα 1: Ανάκτηση δεδομένων
+        data = get_crypto_data()
+        if data is None:
+            logging.error("Αποτυχία ανάκτησης δεδομένων. Έξοδος.")
+            return
+
+        # Βήμα 2: Δημιουργία γραφήματος
+        plot_fig = generate_forecast_plot(data)
+
+        # Βήμα 3: Αποθήκευση του γραφήματος ως HTML αρχείο
+        plot_fig.write_html("index.html")
+        logging.info("Το 'index.html' δημιουργήθηκε με επιτυχία.")
+
     except Exception as e:
-        logging.error(f"Error fetching data from yfinance: {e}")
-        raise
+        logging.error(f"Προέκυψε ένα σφάλμα: {e}")
 
-    # Prepare data for Prophet
-    df = pd.DataFrame()
-    df['ds'] = data.index.values
-    df['y'] = data['Close'].values
+if __name__ == "__main__":
+    main()
 
-    # Train Prophet model
-    logging.info("Training Prophet model...")
-    model = Prophet()
-    model.fit(df)
-
-    # Make a 30-day forecast
-    future = model.make_future_dataframe(periods=30)
-    forecast = model.predict(future)
-    logging.info("Forecast completed.")
-
-    # Create Plotly figure
-    fig = go.Figure()
-
-    # Add historical data
-    fig.add_trace(go.Scatter(
-        x=df['ds'],
-        y=df['y'],
-        mode='lines',
-        name='Historical Price'
-    ))
-
-    # Add forecast data
-    fig.add_trace(go.Scatter(
-        x=forecast['ds'],
-        y=forecast['yhat'],
-        mode='lines',
-        name='Forecasted Price',
-        line=dict(color='orange')
-    ))
-
-    # Add uncertainty interval
-    fig.add_trace(go.Scatter(
-        x=forecast['ds'],
-        y=forecast['yhat_lower'],
-        fill=None,
-        mode='lines',
-        line=dict(width=0),
-        name='Lower Bound',
-        showlegend=False
-    ))
-    fig.add_trace(go.Scatter(
-        x=forecast['ds'],
-        y=forecast['yhat_upper'],
-        fill='tonexty',
-        mode='lines',
-        fillcolor='rgba(255, 165, 0, 0.2)',
-        line=dict(width=0),
-        name='Uncertainty Interval',
-        showlegend=False
-    ))
-
-    # Layout styling
-    fig.update_layout(
-        title={
-            'text': f'Τιμή & Πρόβλεψη για {symbol}',
-            'y': 0.9,
-            'x': 0.5,
-            'xanchor': 'center',
-            'yanchor': 'top'
-        },
-        xaxis_title='Ημερομηνία',
-        yaxis_title='Τιμή ($)',
-        template='plotly_white',
-        hovermode='x unified',
-        legend_title='Δεδομένα',
-        margin=dict(l=40, r=40, t=40, b=40),
-        font=dict(family='Inter', size=12, color='rgb(51, 65, 85)')
-    )
-
-    # Use plotly.offline.plot to create a standalone HTML div
-    plot_html = plot(
-        fig, 
-        output_type='div',
-        include_plotlyjs=True,  # This will embed the necessary Plotly JS library
-        config={'displayModeBar': False}
-    )
-
-    logging.info("Plotly plot HTML string generated successfully.")
-    return plot_html
-
-if __name__ == '__main__':
-    # This part will not run in the web service, but is useful for local testing
-    plot_div = get_prediction_plot('BTC-USD')
-    print(plot_div)
