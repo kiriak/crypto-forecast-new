@@ -1,105 +1,132 @@
-import yfinance as yf
-from prophet import Prophet
-import plotly.graph_objects as go
+import requests
 import pandas as pd
 import logging
+from prophet import Prophet
+import plotly.graph_objects as go
 import time
 
-# Configure logging
+# Ρυθμίσεις για την καταγραφή (logging)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def get_crypto_data(symbol: str = "BTC-USD", period: str = "1y", interval: str = "1d"):
+def get_crypto_data(symbol: str = "BTC-USD", days: int = 365):
     """
-    Retrieves cryptocurrency data using yfinance with exponential backoff for retries.
+    Ανακτά δεδομένα κρυπτονομισμάτων από την CoinGecko API με εκθετικό backoff.
+
     Args:
-        symbol (str): The ticker symbol for the cryptocurrency.
-        period (str): The time period for the data (e.g., "1y").
-        interval (str): The data interval (e.g., "1d").
+        symbol (str): Το σύμβολο του κρυπτονομίσματος (π.χ. "BTC-USD").
+        days (int): Ο αριθμός των ημερών για τα ιστορικά δεδομένα.
+
     Returns:
-        pd.DataFrame: A DataFrame with the cryptocurrency data or None if retrieval fails.
+        pd.DataFrame: Ένα DataFrame με τα δεδομένα του κρυπτονομίσματος ή None αν η ανάκτηση αποτύχει.
     """
-    logging.info(f"Fetching data for symbol: {symbol}")
+    # Χάρτης συμβόλων για την CoinGecko API
+    symbol_map = {
+        "BTC-USD": "bitcoin",
+        "ETH-USD": "ethereum",
+        "SOL-USD": "solana",
+        "DOGE-USD": "dogecoin",
+        "XRP-USD": "ripple",
+        "LTC-USD": "litecoin"
+    }
+
+    # Ελέγχουμε αν το σύμβολο υπάρχει στον χάρτη
+    coingecko_id = symbol_map.get(symbol)
+    if not coingecko_id:
+        logging.error(f"Μη υποστηριζόμενο σύμβολο: {symbol}")
+        return None
+
+    api_url = f"https://api.coingecko.com/api/v3/coins/{coingecko_id}/market_chart?vs_currency=usd&days={days}"
+    
+    logging.info(f"Ανάκτηση δεδομένων για το σύμβολο: {coingecko_id} από την CoinGecko API")
     max_retries = 5
     retries = 0
     while retries < max_retries:
         try:
-            # Attempt to download data
-            data = yf.download(symbol, period=period, interval=interval, progress=False)
+            response = requests.get(api_url, timeout=10)
+            response.raise_for_status()  # Θα προκαλέσει σφάλμα για μη επιτυχημένες απαντήσεις (π.χ. 404, 500)
+            data = response.json()
             
-            if data.empty:
-                logging.error(f"No data found for the specified symbol: {symbol}")
+            prices = data.get("prices", [])
+            if not prices:
+                logging.error("Δεν βρέθηκαν δεδομένα τιμών στην απάντηση της API.")
                 return None
-
-            return data
-        except Exception as e:
+            
+            # Μετατροπή των δεδομένων σε DataFrame της Pandas
+            df = pd.DataFrame(prices, columns=['Date', 'Close'])
+            df['Date'] = pd.to_datetime(df['Date'], unit='ms')
+            df.set_index('Date', inplace=True)
+            
+            logging.info(f"Τα δεδομένα ανακτήθηκαν με επιτυχία για το {symbol}. Γραμμές: {len(df)}")
+            return df
+            
+        except requests.exceptions.RequestException as e:
             retries += 1
-            logging.warning(f"Failed to get ticker '{symbol}' reason: {e}")
-            logging.info(f"Retrying in {2 ** retries} seconds... (Attempt {retries}/{max_retries})")
-            time.sleep(2 ** retries)  # Exponential backoff
-    
-    logging.error(f"Failed to download data for {symbol} after {max_retries} attempts.")
+            logging.warning(f"Αποτυχία λήψης δεδομένων από την CoinGecko: {e}")
+            logging.info(f"Επαναπροσπάθεια σε {2 ** retries} δευτερόλεπτα... (Προσπάθεια {retries}/{max_retries})")
+            time.sleep(2 ** retries)  # Εκθετικό backoff
+            
+    logging.error(f"Αποτυχία λήψης δεδομένων για το {symbol} μετά από {max_retries} προσπάθειες.")
     return None
 
 def generate_forecast_plot(data: pd.DataFrame, symbol: str = "BTC-USD"):
     """
-    Generates a Plotly figure with historical data and a future forecast.
+    Δημιουργεί ένα Plotly γράφημα με τα ιστορικά δεδομένα και μια μελλοντική πρόβλεψη.
 
     Args:
-        data (pd.DataFrame): The historical cryptocurrency data.
-        symbol (str): The cryptocurrency symbol.
+        data (pd.DataFrame): Τα ιστορικά δεδομένα του κρυπτονομίσματος.
+        symbol (str): Το σύμβολο του κρυπτονομίσματος.
 
     Returns:
-        plotly.graph_objects.Figure: The Plotly figure with the plot.
+        plotly.graph_objects.Figure: Το αντικείμενο Plotly figure με το γράφημα.
     """
     if 'Close' not in data.columns:
-        logging.error("Input data does not contain a 'Close' column.")
-        # Create a simple figure indicating the error
+        logging.error("Τα δεδομένα εισόδου δεν περιέχουν τη στήλη 'Close'.")
         fig = go.Figure()
         fig.add_annotation(
-            text="Invalid data format. Missing 'Close' column.",
+            text="Λανθασμένη μορφή δεδομένων. Λείπει η στήλη 'Close'.",
             xref="paper", yref="paper", showarrow=False
         )
         return fig
 
-    # Prepare data for Prophet
+    # Προετοιμασία δεδομένων για το μοντέλο Prophet
     df = data.reset_index()[['Date', 'Close']]
     df.columns = ['ds', 'y']
 
-    # Initialize and fit Prophet model
+    # Εκκίνηση και προσαρμογή του μοντέλου Prophet
     model = Prophet()
     model.fit(df)
 
-    # Make future predictions
+    # Δημιουργία μελλοντικών προβλέψεων
     future = model.make_future_dataframe(periods=30)
     forecast = model.predict(future)
 
-    # Create Plotly figure
+    # Δημιουργία του Plotly figure
     fig = go.Figure()
 
-    # Add historical data
+    # Προσθήκη ιστορικών δεδομένων
     fig.add_trace(go.Scatter(
         x=df['ds'],
         y=df['y'],
         mode='lines',
-        name='Historical Price',
+        name='Ιστορική Τιμή',
         line=dict(color='royalblue')
     ))
 
-    # Add forecast data
+    # Προσθήκη δεδομένων πρόβλεψης
     fig.add_trace(go.Scatter(
         x=forecast['ds'],
         y=forecast['yhat'],
         mode='lines',
-        name='Forecasted Price',
+        name='Προβλεπόμενη Τιμή',
         line=dict(color='firebrick', dash='dash')
     ))
 
-    # Add uncertainty interval
+    # Προσθήκη διαστήματος αβεβαιότητας
     fig.add_trace(go.Scatter(
         x=forecast['ds'],
         y=forecast['yhat_lower'],
         mode='lines',
-        name='Lower Bound',
+        name='Κάτω Όριο',
         line=dict(width=0),
         showlegend=False
     ))
@@ -107,18 +134,18 @@ def generate_forecast_plot(data: pd.DataFrame, symbol: str = "BTC-USD"):
         x=forecast['ds'],
         y=forecast['yhat_upper'],
         mode='lines',
-        name='Upper Bound',
+        name='Άνω Όριο',
         fill='tonexty',
         fillcolor='rgba(255, 0, 0, 0.1)',
         line=dict(width=0),
         showlegend=False
     ))
 
-    # Update layout for aesthetics
+    # Ενημέρωση του layout για αισθητική
     fig.update_layout(
-        title=f'Cryptocurrency Price Forecast for {symbol}',
-        xaxis_title='Date',
-        yaxis_title='Price (USD)',
+        title=f'Πρόβλεψη Τιμής για {symbol}',
+        xaxis_title='Ημερομηνία',
+        yaxis_title='Τιμή (USD)',
         template='plotly_white',
         plot_bgcolor='white',
         paper_bgcolor='white',
