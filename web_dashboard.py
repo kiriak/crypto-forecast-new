@@ -1,149 +1,136 @@
-import os
-import logging
-from flask import Flask, render_template, request, jsonify, make_response
-import datetime
-from plotly.offline import plot
-import plotly.graph_objects as go
+import dash
+import dash_core_components as dcc
+import dash_html_components as html
+from dash.dependencies import Input, Output
 import pandas as pd
-import time
-import requests
+import plotly.express as px
+import plotly.graph_objs as go
+import logging
+from flask import Flask, jsonify, request
+import json
+import base64
+from io import BytesIO
 
-# Assuming crypto_forecast is a module in the same directory
-# from crypto_forecast import get_crypto_data, generate_forecast_plot
+# Configuração de logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Placeholder functions for get_crypto_data and generate_forecast_plot
-# In your actual project, these would be imported from the crypto_forecast.py file
-# For this example, we will use placeholders to ensure the Flask app is runnable
-def get_crypto_data(symbol='BTC-USD'):
-    """
-    Simulates fetching crypto data for a given symbol.
-    In a real app, this would get data from an API.
-    """
-    logging.info(f"Simulating data fetch for {symbol}...")
-    
-    # Simple check for a valid symbol
-    if symbol not in ['BTC-USD', 'ETH-USD', 'DOGE-USD', 'SOL-USD', 'ADA-USD']:
-        return pd.DataFrame() # Return empty DataFrame if symbol is invalid
-        
-    # Generate some dummy data for demonstration
-    dates = pd.to_datetime(pd.date_range(start='2023-01-01', periods=100, freq='D'))
-    prices = [100 + i * 2 * (1 + 0.1 * (i % 10)) for i in range(100)]
-    df = pd.DataFrame({'ds': dates, 'y': prices})
+# Inicialização do servidor Flask e do Dash
+server = Flask(__name__)
+app = dash.Dash(__name__, server=server)
+
+# Função para criar um DataFrame de exemplo
+def create_sample_dataframe():
+    """Cria um DataFrame de exemplo para o dashboard."""
+    data = {
+        'País': ['Brasil', 'Argentina', 'Chile', 'Colômbia', 'México', 'Peru', 'Equador'],
+        'PIB (Bilhões USD)': [1800, 450, 280, 350, 1200, 220, 100],
+        'População (Milhões)': [215, 45, 19, 52, 126, 33, 18]
+    }
+    df = pd.DataFrame(data)
     return df
 
-def generate_forecast_plot(data, symbol='BTC-USD'):
-    """
-    Simulates generating a Plotly forecast plot.
-    """
-    logging.info(f"Simulating forecast plot generation for {symbol}...")
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=data['ds'], y=data['y'], mode='lines', name='Historical Prices'))
+df_sample = create_sample_dataframe()
 
-    # Add a simple forecast line
-    forecast_dates = pd.to_datetime(pd.date_range(start=data['ds'].iloc[-1], periods=30, freq='D'))
-    forecast_prices = [data['y'].iloc[-1] * (1 + 0.01 * i) for i in range(30)]
-    fig.add_trace(go.Scatter(x=forecast_dates, y=forecast_prices, mode='lines', name='Forecast', line=dict(dash='dash')))
-    
+# Layout do dashboard
+app.layout = html.Div(
+    style={'backgroundColor': '#f0f2f5', 'fontFamily': 'Arial, sans-serif', 'padding': '20px'},
+    children=[
+        html.H1(
+            "Dashboard Interativo de Exemplo",
+            style={'textAlign': 'center', 'color': '#333', 'marginBottom': '20px'}
+        ),
+        html.Div(
+            style={'display': 'flex', 'flexDirection': 'column', 'alignItems': 'center', 'gap': '20px'},
+            children=[
+                html.Div(
+                    style={'width': '80%', 'backgroundColor': 'white', 'padding': '20px', 'borderRadius': '10px', 'boxShadow': '0 4px 6px rgba(0,0,0,0.1)'},
+                    children=[
+                        html.H3("Selecione os Dados para o Gráfico", style={'color': '#555'}),
+                        dcc.Dropdown(
+                            id='dropdown-eixo-x',
+                            options=[
+                                {'label': 'PIB (Bilhões USD)', 'value': 'PIB (Bilhões USD)'},
+                                {'label': 'População (Milhões)', 'value': 'População (Milhões)'}
+                            ],
+                            value='PIB (Bilhões USD)',
+                            style={'width': '100%'}
+                        ),
+                        dcc.Dropdown(
+                            id='dropdown-eixo-y',
+                            options=[
+                                {'label': 'PIB (Bilhões USD)', 'value': 'PIB (Bilhões USD)'},
+                                {'label': 'População (Milhões)', 'value': 'População (Milhões)'}
+                            ],
+                            value='População (Milhões)',
+                            style={'width': '100%', 'marginTop': '10px'}
+                        )
+                    ]
+                ),
+                html.Div(
+                    style={'width': '80%', 'backgroundColor': 'white', 'padding': '20px', 'borderRadius': '10px', 'boxShadow': '0 4px 6px rgba(0,0,0,0.1)'},
+                    children=[
+                        dcc.Graph(
+                            id='grafico-dinamico'
+                        )
+                    ]
+                )
+            ]
+        )
+    ]
+)
+
+# Callback para atualizar o gráfico
+@app.callback(
+    Output('grafico-dinamico', 'figure'),
+    [Input('dropdown-eixo-x', 'value'),
+     Input('dropdown-eixo-y', 'value')]
+)
+def update_graph(eixo_x, eixo_y):
+    """Atualiza o gráfico com base nas seleções do usuário."""
+    logging.info(f"Atualizando gráfico com X='{eixo_x}' e Y='{eixo_y}'")
+    fig = px.bar(
+        df_sample,
+        x=eixo_x,
+        y=eixo_y,
+        color='País',
+        title=f"Gráfico de {eixo_y} versus {eixo_x}",
+        height=500
+    )
     fig.update_layout(
-        title=f'{symbol} Price Forecast',
-        xaxis_title='Date',
-        yaxis_title='Price (USD)',
-        template='plotly_white',
-        xaxis_rangeslider_visible=True,
+        plot_bgcolor='white',
+        paper_bgcolor='white',
+        font_color='#333',
+        title_font_size=20
     )
     return fig
 
-
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logging.info("Starting Flask application...")
-
-app = Flask(__name__, template_folder='templates')
-
-# Check if required environment variables are set
-if not os.environ.get("RENDER"):
-    logging.warning("Not running on Render. Using a default port.")
-    PORT = 8080
-else:
-    logging.info("Running on Render. Using PORT environment variable.")
-    PORT = os.environ.get("PORT", 10000)
-
-def create_error_plot(error_message):
-    """
-    Creates a simple Plotly figure with an error message.
-    """
-    fig = go.Figure()
-    fig.add_annotation(
-        text=f"Error: {error_message}",
-        xref="paper",
-        yref="paper",
-        showarrow=False,
-        font=dict(size=20, color="red")
-    )
-    fig.update_layout(
-        title_text="Plot Generation Error",
-        xaxis_showgrid=False,
-        yaxis_showgrid=False,
-        xaxis_visible=False,
-        yaxis_visible=False
-    )
-    return fig
-
-@app.route('/', methods=['GET'])
-def index():
-    """
-    Handles the initial request for the main page.
-    Renders the index.html template without a plot initially.
-    """
-    logging.info("Request for the main page ('/'). Rendering index.html.")
-    now = datetime.datetime.now()
-    last_updated_time = now.strftime("%Y-%m-%d %H:%M:%S")
-
-    return render_template(
-        'index.html',
-        plot_html=None,
-        last_updated=last_updated_time,
-        current_coin='BTC-USD'
-    )
-
-@app.route('/forecast', methods=['POST'])
-def forecast():
-    """
-    Handles the POST request to generate a forecast.
-    It receives the coin symbol from the frontend, generates the plot,
-    and returns the plot's HTML as a JSON response.
-    """
-    logging.info("Request for a new forecast received.")
-    
-    # Get the coin symbol from the JSON request
-    selected_coin = request.json.get('coin_symbol', 'BTC-USD')
-    logging.info(f"Generating forecast for: {selected_coin}")
-
+@server.route('/api/plot_data', methods=['POST'])
+def get_plot_data():
     try:
-        # Step 1: Get the data
-        # This function would be imported from crypto_forecast.py
-        data = get_crypto_data(symbol=selected_coin)
+        data = request.get_json()
+        logging.info(f"Dados recebidos para plotagem: {data}")
         
-        if data is None or data.empty:
-            error_message = f"Δεν βρέθηκαν δεδομένα για το σύμβολο: {selected_coin}. Παρακαλώ δοκιμάστε ένα άλλο σύμβολο."
-            logging.error(error_message)
-            fig = create_error_plot(error_message)
-            plot_html = plot(fig, output_type='div', include_plotlyjs=True, config={'displayModeBar': False})
-            return jsonify({'plot_html': plot_html, 'error': error_message})
-        else:
-            # Step 2: Generate the plot
-            # This function would be imported from crypto_forecast.py
-            fig = generate_forecast_plot(data, symbol=selected_coin)
-            
-            # Step 3: Convert the plot to HTML
-            plot_html = plot(
-                fig,
-                output_type='div',
-                include_plotlyjs=True,
-                config={'displayModeBar': False}
-            )
-            logging.info("Η HTML του γραφήματος δημιουργήθηκε με επιτυχία.")
-            return jsonify({'plot_html': plot_html, 'error': None})
+        # Simula a criação de um gráfico com base nos dados
+        df = pd.DataFrame(data['data'])
+        x_col = data['x_column']
+        y_col = data['y_column']
+        
+        fig = px.bar(
+            df,
+            x=x_col,
+            y=y_col,
+            title=f"Gráfico de {y_col} versus {x_col}",
+            height=400
+        )
+        
+        # Converte o gráfico para HTML
+        plot_html = fig.to_html(full_html=False, include_plotlyjs=False)
+        return jsonify({'plot_html': plot_html})
 
     except Exception as e:
-        # Catch any errors during the proc
+        # Catch any errors during the process and return an error message
+        logging.error(f"Σφάλμα κατά τη δημιουργία του γραφήματος: {e}")
+        return jsonify({'error': str(e)}), 500
+
+if __name__ == '__main__':
+    server.run(host='0.0.0.0', port=8050, debug=True)
