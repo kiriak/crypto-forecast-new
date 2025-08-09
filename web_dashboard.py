@@ -10,6 +10,7 @@ from prophet import Prophet
 import json
 import requests
 import warnings
+import time
 
 # Suppress the FutureWarning from Prophet
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -31,23 +32,30 @@ else:
 def get_crypto_data(symbol='BTC-USD', period='2y'):
     """
     Ανακτά ιστορικά δεδομένα κρυπτονομισμάτων από το Yahoo Finance.
-    Αν αποτύχει, επιστρέφει ένα κενό DataFrame.
+    Περιλαμβάνει επαναλήψεις σε περίπτωση αποτυχίας.
     """
-    try:
-        logging.info(f"Ανάκτηση δεδομένων για το σύμβολο: {symbol}...")
-        ticker = yf.Ticker(symbol)
-        history = ticker.history(period=period)
-        if history.empty:
-            logging.error(f"Δεν βρέθηκαν δεδομένα για το σύμβολο {symbol}.")
-            return pd.DataFrame()
-        
-        # Προετοιμασία των δεδομένων για το Prophet
-        df = history.reset_index()[['Date', 'Close']]
-        df.rename(columns={'Date': 'ds', 'Close': 'y'}, inplace=True)
-        return df
-    except Exception as e:
-        logging.error(f"Σφάλμα κατά την ανάκτηση δεδομένων: {e}")
-        return pd.DataFrame()
+    retries = 3
+    for i in range(retries):
+        try:
+            logging.info(f"Ανάκτηση δεδομένων για το σύμβολο: {symbol} (Προσπάθεια {i+1}/{retries})...")
+            ticker = yf.Ticker(symbol)
+            history = ticker.history(period=period)
+            
+            if history.empty:
+                logging.warning(f"Δεν βρέθηκαν δεδομένα για το σύμβολο {symbol} στην προσπάθεια {i+1}. Δοκιμάζω ξανά...")
+                time.sleep(2)
+                continue
+            
+            # Προετοιμασία των δεδομένων για το Prophet
+            df = history.reset_index()[['Date', 'Close']]
+            df.rename(columns={'Date': 'ds', 'Close': 'y'}, inplace=True)
+            return df
+        except Exception as e:
+            logging.error(f"Σφάλμα κατά την ανάκτηση δεδομένων στην προσπάθεια {i+1}: {e}")
+            time.sleep(2)
+
+    logging.error("Αποτυχία ανάκτησης δεδομένων μετά από πολλαπλές προσπάθειες.")
+    return pd.DataFrame()
 
 def generate_forecast_plot(data, symbol='BTC-USD', periods=180):
     """
@@ -156,18 +164,26 @@ def index():
     # Αρχική δημιουργία γραφήματος για το BTC-USD
     try:
         data = get_crypto_data(symbol='BTC-USD')
-        fig = generate_forecast_plot(data, symbol='BTC-USD')
-        plot_html = plot(fig, output_type='div', include_plotlyjs=True, config={'displayModeBar': False})
+        if data.empty:
+            error_message = "Δεν ήταν δυνατή η λήψη δεδομένων για το BTC-USD. Παρακαλώ δοκιμάστε ένα άλλο νόμισμα."
+            fig = create_error_plot(error_message)
+            plot_html = plot(fig, output_type='div', include_plotlyjs=True, config={'displayModeBar': False})
+            current_coin = 'Error'
+        else:
+            fig = generate_forecast_plot(data, symbol='BTC-USD')
+            plot_html = plot(fig, output_type='div', include_plotlyjs=True, config={'displayModeBar': False})
+            current_coin = 'BTC-USD'
     except Exception as e:
         logging.error(f"Σφάλμα στην αρχική δημιουργία γραφήματος: {e}")
         fig = create_error_plot(str(e))
         plot_html = plot(fig, output_type='div', include_plotlyjs=True, config={'displayModeBar': False})
+        current_coin = 'Error'
 
     return render_template(
         'index.html',
         plot_html=plot_html,
         last_updated=last_updated_time,
-        current_coin='BTC-USD'
+        current_coin=current_coin
     )
 
 @app.route('/forecast', methods=['POST'])
