@@ -1,27 +1,26 @@
 import os
 import logging
-from flask import Flask, render_template, request, jsonify, make_response
+from flask import Flask, render_template, request, jsonify
 import datetime
 from plotly.offline import plot
 import plotly.graph_objects as go
 import pandas as pd
-import yfinance as yf
 from prophet import Prophet
 import json
 import requests
 import warnings
 import time
 
-# Suppress the FutureWarning from Prophet
+# Παράκαμψη της FutureWarning από το Prophet
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-# Configure logging
+# Ρύθμιση της καταγραφής (logging)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logging.info("Εκκίνηση της εφαρμογής Flask...")
 
 app = Flask(__name__, template_folder='templates')
 
-# Έλεγχος αν οι απαραίτητες μεταβλητές περιβάλλοντος έχουν οριστεί
+# Έλεγχος αν εκτελείται στο Render για τη σωστή θύρα
 if not os.environ.get("RENDER"):
     logging.warning("Δεν εκτελείται στο Render. Χρήση προεπιλεγμένης θύρας.")
     PORT = 8080
@@ -29,35 +28,41 @@ else:
     logging.info("Εκτελείται στο Render. Χρήση της μεταβλητής περιβάλλοντος PORT.")
     PORT = os.environ.get("PORT", 10000)
 
-def get_crypto_data(symbol='BTC-USD', period='2y'):
+def get_crypto_data(symbol='bitcoin', period_days='730'):
     """
-    Ανακτά ιστορικά δεδομένα κρυπτονομισμάτων από το Yahoo Finance.
-    Περιλαμβάνει επαναλήψεις σε περίπτωση αποτυχίας.
+    Ανακτά ιστορικά δεδομένα κρυπτονομισμάτων από το CoinGecko API.
+    Χρησιμοποιεί requests για πιο αξιόπιστη λήψη δεδομένων.
     """
+    url = f"https://api.coingecko.com/api/v3/coins/{symbol}/market_chart?vs_currency=usd&days={period_days}"
     retries = 3
     for i in range(retries):
         try:
             logging.info(f"Ανάκτηση δεδομένων για το σύμβολο: {symbol} (Προσπάθεια {i+1}/{retries})...")
-            ticker = yf.Ticker(symbol)
-            history = ticker.history(period=period)
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()  # Θα προκαλέσει εξαίρεση για σφάλματα HTTP
+            data = response.json()
             
-            if history.empty:
+            if 'prices' not in data or not data['prices']:
                 logging.warning(f"Δεν βρέθηκαν δεδομένα για το σύμβολο {symbol} στην προσπάθεια {i+1}. Δοκιμάζω ξανά...")
                 time.sleep(2)
                 continue
-            
-            # Προετοιμασία των δεδομένων για το Prophet
-            df = history.reset_index()[['Date', 'Close']]
-            df.rename(columns={'Date': 'ds', 'Close': 'y'}, inplace=True)
-            return df
-        except Exception as e:
-            logging.error(f"Σφάλμα κατά την ανάκτηση δεδομένων στην προσπάθεια {i+1}: {e}")
-            time.sleep(2)
 
+            # Μετατροπή των δεδομένων σε DataFrame
+            df = pd.DataFrame(data['prices'], columns=['timestamp', 'price'])
+            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+            df.rename(columns={'timestamp': 'ds', 'price': 'y'}, inplace=True)
+            return df
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Σφάλμα κατά την ανάκτηση δεδομένων από το API στην προσπάθεια {i+1}: {e}")
+            time.sleep(2)
+        except Exception as e:
+            logging.error(f"Γενικό σφάλμα κατά την επεξεργασία δεδομένων στην προσπάθεια {i+1}: {e}")
+            time.sleep(2)
+    
     logging.error("Αποτυχία ανάκτησης δεδομένων μετά από πολλαπλές προσπάθειες.")
     return pd.DataFrame()
 
-def generate_forecast_plot(data, symbol='BTC-USD', periods=180):
+def generate_forecast_plot(data, symbol='bitcoin', periods=180):
     """
     Δημιουργεί ένα γράφημα πρόβλεψης τιμών κρυπτονομισμάτων χρησιμοποιώντας το Prophet.
     """
@@ -118,7 +123,7 @@ def generate_forecast_plot(data, symbol='BTC-USD', periods=180):
         ))
 
         fig.update_layout(
-            title=f'Πρόβλεψη Τιμής {symbol} για τους επόμενους {periods} ημέρες',
+            title=f'Πρόβλεψη Τιμής {symbol.capitalize()} για τους επόμενους {periods} ημέρες',
             xaxis_title='Ημερομηνία',
             yaxis_title='Τιμή (USD)',
             template='plotly_white',
@@ -161,18 +166,18 @@ def index():
     now = datetime.datetime.now()
     last_updated_time = now.strftime("%Y-%m-%d %H:%M:%S")
 
-    # Αρχική δημιουργία γραφήματος για το BTC-USD
+    # Αρχική δημιουργία γραφήματος για το bitcoin
     try:
-        data = get_crypto_data(symbol='BTC-USD')
+        data = get_crypto_data(symbol='bitcoin')
         if data.empty:
-            error_message = "Δεν ήταν δυνατή η λήψη δεδομένων για το BTC-USD. Παρακαλώ δοκιμάστε ένα άλλο νόμισμα."
+            error_message = "Δεν ήταν δυνατή η λήψη δεδομένων για το Bitcoin. Παρακαλώ δοκιμάστε ένα άλλο νόμισμα."
             fig = create_error_plot(error_message)
             plot_html = plot(fig, output_type='div', include_plotlyjs=True, config={'displayModeBar': False})
             current_coin = 'Error'
         else:
-            fig = generate_forecast_plot(data, symbol='BTC-USD')
+            fig = generate_forecast_plot(data, symbol='bitcoin')
             plot_html = plot(fig, output_type='div', include_plotlyjs=True, config={'displayModeBar': False})
-            current_coin = 'BTC-USD'
+            current_coin = 'bitcoin'
     except Exception as e:
         logging.error(f"Σφάλμα στην αρχική δημιουργία γραφήματος: {e}")
         fig = create_error_plot(str(e))
@@ -194,7 +199,7 @@ def forecast():
     """
     logging.info("Ελήφθη αίτηση για νέα πρόβλεψη.")
     
-    selected_coin = request.json.get('coin_symbol', 'BTC-USD')
+    selected_coin = request.json.get('coin_symbol', 'bitcoin')
     logging.info(f"Δημιουργία πρόβλεψης για: {selected_coin}")
 
     try:

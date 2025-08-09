@@ -7,169 +7,118 @@
   <meta name="Generator" content="Cocoa HTML Writer">
   <meta name="CocoaVersion" content="2575.6">
   <style type="text/css">
-    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 14.0px Menlo; color: #3874c0; -webkit-text-stroke: #3874c0; background-color: #121313}
-    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 14.0px Menlo; color: #3874c0; -webkit-text-stroke: #3874c0; background-color: #121313; min-height: 16.0px}
-    span.s1 {font-kerning: none}
+    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 14.0px Menlo; color: #4689cc; -webkit-text-stroke: #4689cc}
+    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 14.0px Menlo; color: #8cd3fe; -webkit-text-stroke: #8cd3fe}
+    p.p3 {margin: 0.0px 0.0px 0.0px 0.0px; font: 14.0px Menlo; color: #c27e65; -webkit-text-stroke: #c27e65}
+    p.p4 {margin: 0.0px 0.0px 0.0px 0.0px; font: 14.0px Menlo; color: #cacaca; -webkit-text-stroke: #cacaca}
+    p.p5 {margin: 0.0px 0.0px 0.0px 0.0px; font: 14.0px Menlo; color: #cacaca; -webkit-text-stroke: #cacaca; min-height: 16.0px}
+    p.p6 {margin: 0.0px 0.0px 0.0px 0.0px; font: 14.0px Menlo; color: #6d7378; -webkit-text-stroke: #6d7378}
+    p.p7 {margin: 0.0px 0.0px 0.0px 0.0px; font: 14.0px Menlo; color: #71c083; -webkit-text-stroke: #71c083}
+    span.s1 {font-kerning: none; background-color: #171818}
+    span.s2 {font-kerning: none; color: #8cd3fe; background-color: #171818; -webkit-text-stroke: 0px #8cd3fe}
+    span.s3 {font-kerning: none; color: #6d6d6d; background-color: #171818; -webkit-text-stroke: 0px #6d6d6d}
+    span.s4 {font-kerning: none; color: #cacaca; background-color: #171818; -webkit-text-stroke: 0px #cacaca}
+    span.s5 {font-kerning: none; color: #c27e65; background-color: #171818; -webkit-text-stroke: 0px #c27e65}
+    span.s6 {font-kerning: none; color: #4689cc; background-color: #171818; -webkit-text-stroke: 0px #4689cc}
+    span.s7 {font-kerning: none}
+    span.s8 {font-kerning: none; color: #d4d4d4; background-color: #171818; -webkit-text-stroke: 0px #d4d4d4}
+    span.s9 {font-kerning: none; color: #71c083; background-color: #171818; -webkit-text-stroke: 0px #71c083}
+    span.s10 {font-kerning: none; color: #b76ff7; background-color: #171818; -webkit-text-stroke: 0px #b76ff7}
+    span.s11 {font-kerning: none; color: #36c0a0; background-color: #171818; -webkit-text-stroke: 0px #36c0a0}
   </style>
 </head>
 <body>
-<p class="p1"><span class="s1">import os</span></p>
-<p class="p1"><span class="s1">import logging</span></p>
-<p class="p1"><span class="s1">from flask import Flask, render_template, request, jsonify, make_response</span></p>
-<p class="p1"><span class="s1">import datetime</span></p>
-<p class="p1"><span class="s1">from plotly.offline import plot</span></p>
-<p class="p1"><span class="s1">import plotly.graph_objects as go</span></p>
-<p class="p1"><span class="s1">import pandas as pd</span></p>
-<p class="p1"><span class="s1">import time</span></p>
-<p class="p1"><span class="s1">import requests</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1"># Assuming crypto_forecast is a module in the same directory</span></p>
-<p class="p1"><span class="s1"># from crypto_forecast import get_crypto_data, generate_forecast_plot</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1"># Placeholder functions for get_crypto_data and generate_forecast_plot</span></p>
-<p class="p1"><span class="s1"># In your actual project, these would be imported from the crypto_forecast.py file</span></p>
-<p class="p1"><span class="s1"># For this example, we will use placeholders to ensure the Flask app is runnable</span></p>
-<p class="p1"><span class="s1">def get_crypto_data(symbol='BTC-USD'):</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>"""</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>Simulates fetching crypto data for a given symbol.</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>In a real app, this would get data from an API.</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>"""</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>logging.info(f"Simulating data fetch for {symbol}...")</span></p>
-<p class="p2"><span class="s1"><span class="Apple-converted-space">    </span></span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span># Simple check for a valid symbol</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>if symbol not in ['BTC-USD', 'ETH-USD', 'DOGE-USD', 'SOL-USD', 'ADA-USD']:</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>return pd.DataFrame() # Return empty DataFrame if symbol is invalid</span></p>
-<p class="p2"><span class="s1"><span class="Apple-converted-space">        </span></span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span># Generate some dummy data for demonstration</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>dates = pd.to_datetime(pd.date_range(start='2023-01-01', periods=100, freq='D'))</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>prices = [100 + i * 2 * (1 + 0.1 * (i % 10)) for i in range(100)]</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>df = pd.DataFrame({'ds': dates, 'y': prices})</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>return df</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1">def generate_forecast_plot(data, symbol='BTC-USD'):</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>"""</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>Simulates generating a Plotly forecast plot.</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>"""</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>logging.info(f"Simulating forecast plot generation for {symbol}...")</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>fig = go.Figure()</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>fig.add_trace(go.Scatter(x=data['ds'], y=data['y'], mode='lines', name='Historical Prices'))</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span># Add a simple forecast line</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>forecast_dates = pd.to_datetime(pd.date_range(start=data['ds'].iloc[-1], periods=30, freq='D'))</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>forecast_prices = [data['y'].iloc[-1] * (1 + 0.01 * i) for i in range(30)]</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>fig.add_trace(go.Scatter(x=forecast_dates, y=forecast_prices, mode='lines', name='Forecast', line=dict(dash='dash')))</span></p>
-<p class="p2"><span class="s1"><span class="Apple-converted-space">    </span></span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>fig.update_layout(</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>title=f'{symbol} Price Forecast',</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>xaxis_title='Date',</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>yaxis_title='Price (USD)',</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>template='plotly_white',</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>xaxis_rangeslider_visible=True,</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>)</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>return fig</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1"># Configure logging</span></p>
-<p class="p1"><span class="s1">logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')</span></p>
-<p class="p1"><span class="s1">logging.info("Starting Flask application...")</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1">app = Flask(__name__, template_folder='templates')</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1"># Check if required environment variables are set</span></p>
-<p class="p1"><span class="s1">if not os.environ.get("RENDER"):</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>logging.warning("Not running on Render. Using a default port.")</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>PORT = 8080</span></p>
-<p class="p1"><span class="s1">else:</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>logging.info("Running on Render. Using PORT environment variable.")</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>PORT = os.environ.get("PORT", 10000)</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1">def create_error_plot(error_message):</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>"""</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>Creates a simple Plotly figure with an error message.</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>"""</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>fig = go.Figure()</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>fig.add_annotation(</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>text=f"Error: {error_message}",</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>xref="paper",</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>yref="paper",</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>showarrow=False,</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>font=dict(size=20, color="red")</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>)</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>fig.update_layout(</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>title_text="Plot Generation Error",</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>xaxis_showgrid=False,</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>yaxis_showgrid=False,</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>xaxis_visible=False,</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>yaxis_visible=False</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>)</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>return fig</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1">@app.route('/', methods=['GET'])</span></p>
-<p class="p1"><span class="s1">def index():</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>"""</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>Handles the initial request for the main page.</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>Renders the index.html template without a plot initially.</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>"""</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>logging.info("Request for the main page ('/'). Rendering index.html.")</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>now = datetime.datetime.now()</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>last_updated_time = now.strftime("%Y-%m-%d %H:%M:%S")</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>return render_template(</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>'index.html',</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>plot_html=None,</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>last_updated=last_updated_time,</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>current_coin='BTC-USD'</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>)</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1">@app.route('/forecast', methods=['POST'])</span></p>
-<p class="p1"><span class="s1">def forecast():</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>"""</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>Handles the POST request to generate a forecast.</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>It receives the coin symbol from the frontend, generates the plot,</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>and returns the plot's HTML as a JSON response.</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>"""</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>logging.info("Request for a new forecast received.")</span></p>
-<p class="p2"><span class="s1"><span class="Apple-converted-space">    </span></span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span># Get the coin symbol from the JSON request</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>selected_coin = request.json.get('coin_symbol', 'BTC-USD')</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>logging.info(f"Generating forecast for: {selected_coin}")</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>try:</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span># Step 1: Get the data</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span># This function would be imported from crypto_forecast.py</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>data = get_crypto_data(symbol=selected_coin)</span></p>
-<p class="p2"><span class="s1"><span class="Apple-converted-space">        </span></span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>if data is None or data.empty:</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>error_message = f"Δεν βρέθηκαν δεδομένα για το σύμβολο: {selected_coin}. Παρακαλώ δοκιμάστε ένα άλλο σύμβολο."</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>logging.error(error_message)</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>fig = create_error_plot(error_message)</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>plot_html = plot(fig, output_type='div', include_plotlyjs=True, config={'displayModeBar': False})</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>return jsonify({'plot_html': plot_html, 'error': error_message})</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>else:</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span># Step 2: Generate the plot</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span># This function would be imported from crypto_forecast.py</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>fig = generate_forecast_plot(data, symbol=selected_coin)</span></p>
-<p class="p2"><span class="s1"><span class="Apple-converted-space">            </span></span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span># Step 3: Convert the plot to HTML</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>plot_html = plot(</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>fig,</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>output_type='div',</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>include_plotlyjs=True,</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>config={'displayModeBar': False}</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>)</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>logging.info("Η HTML του γραφήματος δημιουργήθηκε με επιτυχία.")</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>return jsonify({'plot_html': plot_html, 'error': None})</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>except Exception as e:</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span># Catch any errors during the process and return an error plot</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>logging.error(f"Σφάλμα κατά τη δημιουργία του γραφήματος: {e}")</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>error_message = str(e)</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>fig = create_error_plot(error_message)</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>plot_html = plot(fig, output_type='div', include_plotlyjs=True, config={'displayModeBar': False})</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>return jsonify({'plot_html': plot_html, 'error': error_message})</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1">if __name__ == '__main__':</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span># Run the Flask app on the specified port</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>app.run(host='0.0.0.0', port=PORT, debug=False)</span></p>
+<p class="p1"><span class="s1">&lt;!DOCTYPE</span><span class="s2"> html</span><span class="s1">&gt;</span></p>
+<p class="p1"><span class="s3">&lt;</span><span class="s1">html</span><span class="s4"> </span><span class="s2">lang</span><span class="s3">=</span><span class="s5">"el"</span><span class="s3">&gt;</span></p>
+<p class="p1"><span class="s3">&lt;</span><span class="s1">head</span><span class="s3">&gt;</span></p>
+<p class="p2"><span class="s4"><span class="Apple-converted-space">    </span></span><span class="s3">&lt;</span><span class="s6">meta</span><span class="s4"> </span><span class="s1">charset</span><span class="s3">=</span><span class="s5">"UTF-8"</span><span class="s3">&gt;</span></p>
+<p class="p3"><span class="s4"><span class="Apple-converted-space">    </span></span><span class="s3">&lt;</span><span class="s6">meta</span><span class="s4"> </span><span class="s2">name</span><span class="s3">=</span><span class="s1">"viewport"</span><span class="s4"> </span><span class="s2">content</span><span class="s3">=</span><span class="s1">"width=device-width, initial-scale=1.0"</span><span class="s3">&gt;</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">    </span></span><span class="s3">&lt;</span><span class="s6">title</span><span class="s3">&gt;</span><span class="s1">Πρόβλεψη Τιμών Κρυπτονομισμάτων</span><span class="s3">&lt;/</span><span class="s6">title</span><span class="s3">&gt;</span></p>
+<p class="p3"><span class="s4"><span class="Apple-converted-space">    </span></span><span class="s3">&lt;</span><span class="s6">script</span><span class="s4"> </span><span class="s2">src</span><span class="s3">=</span><span class="s1">"https://cdn.tailwindcss.com"</span><span class="s3">&gt;&lt;/</span><span class="s6">script</span><span class="s3">&gt;</span></p>
+<p class="p3"><span class="s4"><span class="Apple-converted-space">    </span></span><span class="s3">&lt;</span><span class="s6">script</span><span class="s4"> </span><span class="s2">src</span><span class="s3">=</span><span class="s1">"https://cdn.plot.ly/plotly-2.18.2.min.js"</span><span class="s3">&gt;&lt;/</span><span class="s6">script</span><span class="s3">&gt;</span></p>
+<p class="p1"><span class="s3">&lt;/</span><span class="s1">head</span><span class="s3">&gt;</span></p>
+<p class="p3"><span class="s3">&lt;</span><span class="s6">body</span><span class="s4"> </span><span class="s2">class</span><span class="s3">=</span><span class="s1">"bg-gray-100 font-sans flex flex-col items-center justify-center min-h-screen p-4"</span><span class="s3">&gt;</span></p>
+<p class="p5"><span class="s7"></span><br></p>
+<p class="p3"><span class="s4"><span class="Apple-converted-space">    </span></span><span class="s3">&lt;</span><span class="s6">div</span><span class="s4"> </span><span class="s2">class</span><span class="s3">=</span><span class="s1">"bg-white rounded-xl shadow-lg p-6 sm:p-8 w-full max-w-4xl text-center"</span><span class="s3">&gt;</span></p>
+<p class="p3"><span class="s4"><span class="Apple-converted-space">        </span></span><span class="s3">&lt;</span><span class="s6">h1</span><span class="s4"> </span><span class="s2">class</span><span class="s3">=</span><span class="s1">"text-3xl sm:text-4xl font-bold text-gray-800 mb-2"</span><span class="s3">&gt;</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">            </span>📊 Πρόβλεψη Τιμών Κρυπτονομισμάτων</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">        </span></span><span class="s3">&lt;/</span><span class="s6">h1</span><span class="s3">&gt;</span></p>
+<p class="p3"><span class="s4"><span class="Apple-converted-space">        </span></span><span class="s3">&lt;</span><span class="s6">p</span><span class="s4"> </span><span class="s2">class</span><span class="s3">=</span><span class="s1">"text-gray-500 mb-6 sm:mb-8"</span><span class="s3">&gt;</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">            </span>Επιλέξτε ένα κρυπτονόμισμα για να δείτε την πρόβλεψη τιμών για τους επόμενους 6 μήνες.</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">        </span></span><span class="s3">&lt;/</span><span class="s6">p</span><span class="s3">&gt;</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span></span></p>
+<p class="p6"><span class="s4"><span class="Apple-converted-space">        </span></span><span class="s1">&lt;!-- Dropdown και κουμπί --&gt;</span></p>
+<p class="p3"><span class="s4"><span class="Apple-converted-space">        </span></span><span class="s3">&lt;</span><span class="s6">div</span><span class="s4"> </span><span class="s2">class</span><span class="s3">=</span><span class="s1">"flex flex-col sm:flex-row items-center justify-center gap-4 mb-6"</span><span class="s3">&gt;</span></p>
+<p class="p3"><span class="s4"><span class="Apple-converted-space">            </span></span><span class="s3">&lt;</span><span class="s6">select</span><span class="s4"> </span><span class="s2">id</span><span class="s3">=</span><span class="s1">"coin-selector"</span><span class="s4"> </span><span class="s2">class</span><span class="s3">=</span><span class="s1">"p-3 border border-gray-300 rounded-lg w-full sm:w-auto focus:outline-none focus:ring-2 focus:ring-teal-500"</span><span class="s3">&gt;</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">                </span></span><span class="s3">&lt;</span><span class="s6">option</span><span class="s1"> </span><span class="s2">value</span><span class="s3">=</span><span class="s5">"bitcoin"</span><span class="s3">&gt;</span><span class="s1">Bitcoin (BTC)</span><span class="s3">&lt;/</span><span class="s6">option</span><span class="s3">&gt;</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">                </span></span><span class="s3">&lt;</span><span class="s6">option</span><span class="s1"> </span><span class="s2">value</span><span class="s3">=</span><span class="s5">"ethereum"</span><span class="s3">&gt;</span><span class="s1">Ethereum (ETH)</span><span class="s3">&lt;/</span><span class="s6">option</span><span class="s3">&gt;</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">                </span></span><span class="s3">&lt;</span><span class="s6">option</span><span class="s1"> </span><span class="s2">value</span><span class="s3">=</span><span class="s5">"dogecoin"</span><span class="s3">&gt;</span><span class="s1">Dogecoin (DOGE)</span><span class="s3">&lt;/</span><span class="s6">option</span><span class="s3">&gt;</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">                </span></span><span class="s3">&lt;</span><span class="s6">option</span><span class="s1"> </span><span class="s2">value</span><span class="s3">=</span><span class="s5">"solana"</span><span class="s3">&gt;</span><span class="s1">Solana (SOL)</span><span class="s3">&lt;/</span><span class="s6">option</span><span class="s3">&gt;</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">                </span></span><span class="s3">&lt;</span><span class="s6">option</span><span class="s1"> </span><span class="s2">value</span><span class="s3">=</span><span class="s5">"cardano"</span><span class="s3">&gt;</span><span class="s1">Cardano (ADA)</span><span class="s3">&lt;/</span><span class="s6">option</span><span class="s3">&gt;</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s3">&lt;/</span><span class="s6">select</span><span class="s3">&gt;</span></p>
+<p class="p3"><span class="s4"><span class="Apple-converted-space">            </span></span><span class="s3">&lt;</span><span class="s6">button</span><span class="s4"> </span><span class="s2">id</span><span class="s3">=</span><span class="s1">"generate-forecast-btn"</span><span class="s4"> </span><span class="s2">class</span><span class="s3">=</span><span class="s1">"bg-teal-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-teal-700 transition-colors w-full sm:w-auto"</span><span class="s3">&gt;</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">                </span>Δημιουργία Πρόβλεψης</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s3">&lt;/</span><span class="s6">button</span><span class="s3">&gt;</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">        </span></span><span class="s3">&lt;/</span><span class="s6">div</span><span class="s3">&gt;</span></p>
+<p class="p5"><span class="s7"></span><br></p>
+<p class="p6"><span class="s4"><span class="Apple-converted-space">        </span></span><span class="s1">&lt;!-- Κοντέινερ για το γράφημα --&gt;</span></p>
+<p class="p3"><span class="s4"><span class="Apple-converted-space">        </span></span><span class="s3">&lt;</span><span class="s6">div</span><span class="s4"> </span><span class="s2">id</span><span class="s3">=</span><span class="s1">"plot-container"</span><span class="s4"> </span><span class="s2">class</span><span class="s3">=</span><span class="s1">"w-full h-auto min-h-[400px] border border-gray-200 rounded-lg overflow-hidden flex items-center justify-center p-4"</span><span class="s3">&gt;</span></p>
+<p class="p6"><span class="s4"><span class="Apple-converted-space">            </span></span><span class="s1">&lt;!-- Το γράφημα θα φορτωθεί εδώ --&gt;</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">            </span>{% if plot_html %}</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">            </span>{{ plot_html | safe }}</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">            </span>{% else %}</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s3">&lt;</span><span class="s6">div</span><span class="s1"> </span><span class="s2">class</span><span class="s3">=</span><span class="s5">"text-gray-400 text-lg"</span><span class="s3">&gt;</span><span class="s1">Επιλέξτε ένα κρυπτονόμισμα και πατήστε "Δημιουργία Πρόβλεψης"</span><span class="s3">&lt;/</span><span class="s6">div</span><span class="s3">&gt;</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">            </span>{% endif %}</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">        </span></span><span class="s3">&lt;/</span><span class="s6">div</span><span class="s3">&gt;</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">        </span></span></p>
+<p class="p6"><span class="s4"><span class="Apple-converted-space">        </span></span><span class="s1">&lt;!-- Μήνυμα σφάλματος --&gt;</span></p>
+<p class="p3"><span class="s4"><span class="Apple-converted-space">        </span></span><span class="s3">&lt;</span><span class="s6">div</span><span class="s4"> </span><span class="s2">id</span><span class="s3">=</span><span class="s1">"error-message"</span><span class="s4"> </span><span class="s2">class</span><span class="s3">=</span><span class="s1">"mt-4 text-red-600 font-medium hidden"</span><span class="s3">&gt;&lt;/</span><span class="s6">div</span><span class="s3">&gt;</span></p>
+<p class="p5"><span class="s7"></span><br></p>
+<p class="p3"><span class="s4"><span class="Apple-converted-space">        </span></span><span class="s3">&lt;</span><span class="s6">p</span><span class="s4"> </span><span class="s2">class</span><span class="s3">=</span><span class="s1">"text-xs text-gray-400 mt-6"</span><span class="s3">&gt;</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">            </span>Τελευταία ενημέρωση: </span><span class="s3">&lt;</span><span class="s6">span</span><span class="s1"> </span><span class="s2">id</span><span class="s3">=</span><span class="s5">"last-updated"</span><span class="s3">&gt;</span><span class="s1">{{ last_updated }}</span><span class="s3">&lt;/</span><span class="s6">span</span><span class="s3">&gt;</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">        </span></span><span class="s3">&lt;/</span><span class="s6">p</span><span class="s3">&gt;</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">    </span></span><span class="s3">&lt;/</span><span class="s6">div</span><span class="s3">&gt;</span></p>
+<p class="p5"><span class="s7"></span><br></p>
+<p class="p1"><span class="s4"><span class="Apple-converted-space">    </span></span><span class="s3">&lt;</span><span class="s1">script</span><span class="s3">&gt;</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">        </span>document</span><span class="s8">.</span><span class="s1">getElementById</span><span class="s8">(</span><span class="s9">'generate-forecast-btn'</span><span class="s8">).</span><span class="s1">addEventListener</span><span class="s8">(</span><span class="s9">'click'</span><span class="s8">,</span><span class="s1"> </span><span class="s10">async</span><span class="s1"> </span><span class="s8">()</span><span class="s1"> </span><span class="s8">=&gt;</span><span class="s1"> </span><span class="s8">{</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s10">const</span><span class="s1"> coinSelector </span><span class="s8">=</span><span class="s1"> document</span><span class="s8">.</span><span class="s1">getElementById</span><span class="s8">(</span><span class="s9">'coin-selector'</span><span class="s8">);</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s10">const</span><span class="s1"> selectedCoin </span><span class="s8">=</span><span class="s1"> coinSelector</span><span class="s8">.</span><span class="s1">value</span><span class="s8">;</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s10">const</span><span class="s1"> plotContainer </span><span class="s8">=</span><span class="s1"> document</span><span class="s8">.</span><span class="s1">getElementById</span><span class="s8">(</span><span class="s9">'plot-container'</span><span class="s8">);</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s10">const</span><span class="s1"> errorMessage </span><span class="s8">=</span><span class="s1"> document</span><span class="s8">.</span><span class="s1">getElementById</span><span class="s8">(</span><span class="s9">'error-message'</span><span class="s8">);</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span></p>
+<p class="p6"><span class="s4"><span class="Apple-converted-space">            </span></span><span class="s1">// Εμφάνιση μηνύματος φόρτωσης</span></p>
+<p class="p7"><span class="s4"><span class="Apple-converted-space">            </span>plotContainer</span><span class="s8">.</span><span class="s4">innerHTML </span><span class="s8">=</span><span class="s4"> </span><span class="s1">'&lt;div class="text-center text-gray-500 text-lg"&gt;Παρακαλώ περιμένετε...&lt;/div&gt;'</span><span class="s8">;</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">            </span>errorMessage</span><span class="s8">.</span><span class="s1">classList</span><span class="s8">.</span><span class="s1">add</span><span class="s8">(</span><span class="s9">'hidden'</span><span class="s8">);</span></p>
+<p class="p5"><span class="s1"><span class="Apple-converted-space">            </span></span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s10">try</span><span class="s1"> </span><span class="s8">{</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">                </span></span><span class="s10">const</span><span class="s1"> response </span><span class="s8">=</span><span class="s1"> </span><span class="s10">await</span><span class="s1"> fetch</span><span class="s8">(</span><span class="s9">'/forecast'</span><span class="s8">,</span><span class="s1"> </span><span class="s8">{</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">                    </span>method</span><span class="s8">:</span><span class="s1"> </span><span class="s9">'POST'</span><span class="s8">,</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">                    </span>headers</span><span class="s8">:</span><span class="s1"> </span><span class="s8">{</span></p>
+<p class="p7"><span class="s4"><span class="Apple-converted-space">                        </span></span><span class="s1">'Content-Type'</span><span class="s8">:</span><span class="s4"> </span><span class="s1">'application/json'</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">                    </span></span><span class="s8">},</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">                    </span>body</span><span class="s8">:</span><span class="s1"> </span><span class="s11">JSON</span><span class="s8">.</span><span class="s1">stringify</span><span class="s8">({</span><span class="s1"> coin_symbol</span><span class="s8">:</span><span class="s1"> selectedCoin </span><span class="s8">})</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">                </span></span><span class="s8">});</span></p>
+<p class="p5"><span class="s7"></span><br></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">                </span></span><span class="s10">const</span><span class="s1"> result </span><span class="s8">=</span><span class="s1"> </span><span class="s10">await</span><span class="s1"> response</span><span class="s8">.</span><span class="s1">json</span><span class="s8">();</span></p>
+<p class="p5"><span class="s7"></span><br></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">                </span></span><span class="s10">if</span><span class="s1"> </span><span class="s8">(</span><span class="s1">result</span><span class="s8">.</span><span class="s1">error</span><span class="s8">)</span><span class="s1"> </span><span class="s8">{</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">                    </span>plotContainer</span><span class="s8">.</span><span class="s1">innerHTML </span><span class="s8">=</span><span class="s1"> </span><span class="s9">`&lt;div class="text-red-500 text-lg p-4"&gt;</span><span class="s8">${</span><span class="s1">result</span><span class="s8">.</span><span class="s1">error</span><span class="s8">}</span><span class="s9">&lt;/div&gt;`</span><span class="s8">;</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">                    </span>errorMessage</span><span class="s8">.</span><span class="s1">textContent </span><span class="s8">=</span><span class="s1"> result</span><span class="s8">.</span><span class="s1">error</span><span class="s8">;</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">                    </span>errorMessage</span><span class="s8">.</span><span class="s1">classList</span><span class="s8">.</span><span class="s1">remove</span><span class="s8">(</span><span class="s9">'hidden'</span><span class="s8">);</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">                </span></span><span class="s8">}</span><span class="s1"> </span><span class="s10">else</span><span class="s1"> </span><span class="s8">{</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">                    </span>plotContainer</span><span class="s8">.</span><span class="s1">innerHTML </span><span class="s8">=</span><span class="s1"> result</span><span class="s8">.</span><span class="s1">plot_html</span><span class="s8">;</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">                    </span>document</span><span class="s8">.</span><span class="s1">getElementById</span><span class="s8">(</span><span class="s9">'last-updated'</span><span class="s8">).</span><span class="s1">textContent </span><span class="s8">=</span><span class="s1"> </span><span class="s10">new</span><span class="s1"> </span><span class="s11">Date</span><span class="s8">().</span><span class="s1">toLocaleString</span><span class="s8">();</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">                </span></span><span class="s8">}</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s8">}</span><span class="s1"> </span><span class="s10">catch</span><span class="s1"> </span><span class="s8">(</span><span class="s1">error</span><span class="s8">)</span><span class="s1"> </span><span class="s8">{</span></p>
+<p class="p7"><span class="s4"><span class="Apple-converted-space">                </span>console</span><span class="s8">.</span><span class="s4">error</span><span class="s8">(</span><span class="s1">'Σφάλμα κατά την ανάκτηση της πρόβλεψης:'</span><span class="s8">,</span><span class="s4"> error</span><span class="s8">);</span></p>
+<p class="p7"><span class="s4"><span class="Apple-converted-space">                </span>plotContainer</span><span class="s8">.</span><span class="s4">innerHTML </span><span class="s8">=</span><span class="s4"> </span><span class="s1">`&lt;div class="text-red-500 text-lg p-4"&gt;Αποτυχία φόρτωσης του γραφήματος. Παρακαλώ δοκιμάστε ξανά.&lt;/div&gt;`</span><span class="s8">;</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">                </span>errorMessage</span><span class="s8">.</span><span class="s1">textContent </span><span class="s8">=</span><span class="s1"> </span><span class="s9">'Αποτυχία φόρτωσης του γραφήματος.'</span><span class="s8">;</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">                </span>errorMessage</span><span class="s8">.</span><span class="s1">classList</span><span class="s8">.</span><span class="s1">remove</span><span class="s8">(</span><span class="s9">'hidden'</span><span class="s8">);</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">            </span></span><span class="s8">}</span></p>
+<p class="p4"><span class="s1"><span class="Apple-converted-space">        </span></span><span class="s8">});</span></p>
+<p class="p1"><span class="s4"><span class="Apple-converted-space">    </span></span><span class="s3">&lt;/</span><span class="s1">script</span><span class="s3">&gt;</span></p>
+<p class="p1"><span class="s3">&lt;/</span><span class="s1">body</span><span class="s3">&gt;</span></p>
+<p class="p1"><span class="s3">&lt;/</span><span class="s1">html</span><span class="s3">&gt;</span></p>
+<p class="p5"><span class="s7"></span><br></p>
 </body>
 </html>
