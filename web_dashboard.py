@@ -28,36 +28,49 @@ else:
     logging.info("Εκτελείται στο Render. Χρήση της μεταβλητής περιβάλλοντος PORT.")
     PORT = os.environ.get("PORT", 10000)
 
-def get_crypto_data(symbol='bitcoin', period_days='730'):
+# ==============================================================================
+# ΠΡΟΣΟΧΗ: ΠΡΟΣΘΕΣΕ ΕΔΩ ΤΟ ΔΙΚΟ ΣΟΥ API KEY ΑΠΟ ΤΟ COINAPI
+# Δημιούργησε ένα δωρεάν κλειδί στο https://www.coinapi.io
+# ==============================================================================
+API_KEY = 6ce7f7f2-f70b-4fb6-85ab-e3b215ec4444
+
+def get_crypto_data(symbol='BTC', period_days='730'):
     """
-    Ανακτά ιστορικά δεδομένα κρυπτονομισμάτων από το CoinGecko API.
-    Χρησιμοποιεί requests για πιο αξιόπιστη λήψη δεδομένων, με καθυστέρηση μεταξύ των επαναλήψεων.
+    Ανακτά ιστορικά δεδομένα κρυπτονομισμάτων από το CoinAPI.
     """
-    url = f"https://api.coingecko.com/api/v3/coins/{symbol}/market_chart?vs_currency=usd&days={period_days}"
+    # Το CoinAPI απαιτεί το σύμβολο με μορφή 'ASSET_ID_EXCHANGE'. Χρησιμοποιούμε 'USD'
+    # και το ανταλλακτήριο 'COINBASE' για σταθερότητα.
+    # Επίσης, η ημερομηνία έναρξης υπολογίζεται από το period_days
+    end_date = datetime.datetime.now()
+    start_date = end_date - datetime.timedelta(days=int(period_days))
+    
+    url = f"https://rest.coinapi.io/v1/ohlcv/{symbol}/USD/history?period_id=1DAY&time_start={start_date.isoformat()}&time_end={end_date.isoformat()}"
+    headers = {'X-CoinAPI-Key': API_KEY}
+
     retries = 3
     for i in range(retries):
         try:
-            logging.info(f"Ανάκτηση δεδομένων για το σύμβολο: {symbol} (Προσπάθεια {i+1}/{retries})...")
-            response = requests.get(url, timeout=10)
-            response.raise_for_status()  # Θα προκαλέσει εξαίρεση για σφάλματα HTTP
+            logging.info(f"Ανάκτηση δεδομένων για το σύμβολο: {symbol} από CoinAPI (Προσπάθεια {i+1}/{retries})...")
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
             data = response.json()
             
-            if 'prices' not in data or not data['prices']:
+            if not data:
                 logging.warning(f"Δεν βρέθηκαν δεδομένα για το σύμβολο {symbol} στην προσπάθεια {i+1}. Δοκιμάζω ξανά...")
-                time.sleep(2)  # Καθυστέρηση πριν την επόμενη προσπάθεια
+                time.sleep(2)
                 continue
 
             # Μετατροπή των δεδομένων σε DataFrame
-            df = pd.DataFrame(data['prices'], columns=['timestamp', 'price'])
-            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-            df.rename(columns={'timestamp': 'ds', 'price': 'y'}, inplace=True)
+            df = pd.DataFrame(data)
+            df['time_close'] = pd.to_datetime(df['time_close'])
+            df.rename(columns={'time_close': 'ds', 'price_close': 'y'}, inplace=True)
             return df
         except requests.exceptions.RequestException as e:
             logging.error(f"Σφάλμα κατά την ανάκτηση δεδομένων από το API στην προσπάθεια {i+1}: {e}")
-            time.sleep(2)  # Καθυστέρηση πριν την επόμενη προσπάθεια
+            time.sleep(2)
         except Exception as e:
             logging.error(f"Γενικό σφάλμα κατά την επεξεργασία δεδομένων στην προσπάθεια {i+1}: {e}")
-            time.sleep(2)  # Καθυστέρηση πριν την επόμενη προσπάθεια
+            time.sleep(2)
     
     logging.error("Αποτυχία ανάκτησης δεδομένων μετά από πολλαπλές προσπάθειες.")
     return pd.DataFrame()
@@ -69,7 +82,6 @@ def generate_forecast_plot(data, symbol='bitcoin', periods=180):
     try:
         logging.info(f"Δημιουργία γραφήματος πρόβλεψης για το σύμβολο: {symbol}...")
         
-        # Δημιουργία μοντέλου Prophet και προσαρμογή του στα δεδομένα
         m = Prophet(
             daily_seasonality=True,
             weekly_seasonality=True,
@@ -78,14 +90,11 @@ def generate_forecast_plot(data, symbol='bitcoin', periods=180):
         )
         m.fit(data)
 
-        # Δημιουργία ενός DataFrame για τη μελλοντική πρόβλεψη
         future = m.make_future_dataframe(periods=periods)
         forecast = m.predict(future)
 
-        # Δημιουργία γραφήματος με το Plotly
         fig = go.Figure()
         
-        # Προσθήκη ιστορικών τιμών
         fig.add_trace(go.Scatter(
             x=data['ds'],
             y=data['y'],
@@ -94,7 +103,6 @@ def generate_forecast_plot(data, symbol='bitcoin', periods=180):
             line=dict(color='#008080')
         ))
         
-        # Προσθήκη πρόβλεψης
         fig.add_trace(go.Scatter(
             x=forecast['ds'],
             y=forecast['yhat'],
@@ -103,7 +111,6 @@ def generate_forecast_plot(data, symbol='bitcoin', periods=180):
             line=dict(color='#8A2BE2', dash='dash')
         ))
         
-        # Προσθήκη του εύρους εμπιστοσύνης (confidence interval)
         fig.add_trace(go.Scatter(
             x=forecast['ds'],
             y=forecast['yhat_upper'],
@@ -168,16 +175,16 @@ def index():
 
     # Αρχική δημιουργία γραφήματος για το bitcoin
     try:
-        data = get_crypto_data(symbol='bitcoin')
+        data = get_crypto_data(symbol='BTC')
         if data.empty:
             error_message = "Δεν ήταν δυνατή η λήψη δεδομένων για το Bitcoin. Παρακαλώ δοκιμάστε ένα άλλο νόμισμα."
             fig = create_error_plot(error_message)
             plot_html = plot(fig, output_type='div', include_plotlyjs=True, config={'displayModeBar': False})
             current_coin = 'Error'
         else:
-            fig = generate_forecast_plot(data, symbol='bitcoin')
+            fig = generate_forecast_plot(data, symbol='BTC')
             plot_html = plot(fig, output_type='div', include_plotlyjs=True, config={'displayModeBar': False})
-            current_coin = 'bitcoin'
+            current_coin = 'BTC'
     except Exception as e:
         logging.error(f"Σφάλμα στην αρχική δημιουργία γραφήματος: {e}")
         fig = create_error_plot(str(e))
@@ -199,7 +206,7 @@ def forecast():
     """
     logging.info("Ελήφθη αίτηση για νέα πρόβλεψη.")
     
-    selected_coin = request.json.get('coin_symbol', 'bitcoin')
+    selected_coin = request.json.get('coin_symbol', 'BTC')
     logging.info(f"Δημιουργία πρόβλεψης για: {selected_coin}")
 
     try:
