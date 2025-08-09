@@ -1,136 +1,212 @@
-import dash
-import dash_core_components as dcc
-import dash_html_components as html
-from dash.dependencies import Input, Output
-import pandas as pd
-import plotly.express as px
-import plotly.graph_objs as go
+import os
 import logging
-from flask import Flask, jsonify, request
+from flask import Flask, render_template, request, jsonify, make_response
+import datetime
+from plotly.offline import plot
+import plotly.graph_objects as go
+import pandas as pd
+import yfinance as yf
+from prophet import Prophet
 import json
-import base64
-from io import BytesIO
+import requests
+import warnings
 
-# Ρύθμιση της καταγραφής (logging)
+# Suppress the FutureWarning from Prophet
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
+# Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.info("Εκκίνηση της εφαρμογής Flask...")
 
-# Αρχικοποίηση του Flask server και του Dash
-server = Flask(__name__)
-app = dash.Dash(__name__, server=server)
+app = Flask(__name__, template_folder='templates')
 
-# Συνάρτηση για τη δημιουργία ενός DataFrame παραδείγματος
-def create_sample_dataframe():
-    """Δημιουργεί ένα DataFrame παραδείγματος για το dashboard."""
-    data = {
-        'Χώρα': ['Ελλάδα', 'Γερμανία', 'Γαλλία', 'Ισπανία', 'Ιταλία', 'Πορτογαλία', 'Κύπρος'],
-        'ΑΕΠ (Δισεκατομμύρια USD)': [210, 4200, 2900, 1400, 2100, 250, 25],
-        'Πληθυσμός (Εκατομμύρια)': [10.5, 83, 65, 47, 60, 10.2, 0.9]
-    }
-    df = pd.DataFrame(data)
-    return df
+# Έλεγχος αν οι απαραίτητες μεταβλητές περιβάλλοντος έχουν οριστεί
+if not os.environ.get("RENDER"):
+    logging.warning("Δεν εκτελείται στο Render. Χρήση προεπιλεγμένης θύρας.")
+    PORT = 8080
+else:
+    logging.info("Εκτελείται στο Render. Χρήση της μεταβλητής περιβάλλοντος PORT.")
+    PORT = os.environ.get("PORT", 10000)
 
-df_sample = create_sample_dataframe()
+def get_crypto_data(symbol='BTC-USD', period='2y'):
+    """
+    Ανακτά ιστορικά δεδομένα κρυπτονομισμάτων από το Yahoo Finance.
+    Αν αποτύχει, επιστρέφει ένα κενό DataFrame.
+    """
+    try:
+        logging.info(f"Ανάκτηση δεδομένων για το σύμβολο: {symbol}...")
+        ticker = yf.Ticker(symbol)
+        history = ticker.history(period=period)
+        if history.empty:
+            logging.error(f"Δεν βρέθηκαν δεδομένα για το σύμβολο {symbol}.")
+            return pd.DataFrame()
+        
+        # Προετοιμασία των δεδομένων για το Prophet
+        df = history.reset_index()[['Date', 'Close']]
+        df.rename(columns={'Date': 'ds', 'Close': 'y'}, inplace=True)
+        return df
+    except Exception as e:
+        logging.error(f"Σφάλμα κατά την ανάκτηση δεδομένων: {e}")
+        return pd.DataFrame()
 
-# Διάταξη (Layout) του dashboard
-app.layout = html.Div(
-    style={'backgroundColor': '#f0f2f5', 'fontFamily': 'Arial, sans-serif', 'padding': '20px'},
-    children=[
-        html.H1(
-            "Διαδραστικό Dashboard Παραδείγματος",
-            style={'textAlign': 'center', 'color': '#333', 'marginBottom': '20px'}
-        ),
-        html.Div(
-            style={'display': 'flex', 'flexDirection': 'column', 'alignItems': 'center', 'gap': '20px'},
-            children=[
-                html.Div(
-                    style={'width': '80%', 'backgroundColor': 'white', 'padding': '20px', 'borderRadius': '10px', 'boxShadow': '0 4px 6px rgba(0,0,0,0.1)'},
-                    children=[
-                        html.H3("Επιλέξτε Δεδομένα για το Γράφημα", style={'color': '#555'}),
-                        dcc.Dropdown(
-                            id='dropdown-eixo-x',
-                            options=[
-                                {'label': 'ΑΕΠ (Δισεκατομμύρια USD)', 'value': 'ΑΕΠ (Δισεκατομμύρια USD)'},
-                                {'label': 'Πληθυσμός (Εκατομμύρια)', 'value': 'Πληθυσμός (Εκατομμύρια)'}
-                            ],
-                            value='ΑΕΠ (Δισεκατομμύρια USD)',
-                            style={'width': '100%'}
-                        ),
-                        dcc.Dropdown(
-                            id='dropdown-eixo-y',
-                            options=[
-                                {'label': 'ΑΕΠ (Δισεκατομμύρια USD)', 'value': 'ΑΕΠ (Δισεκατομμύρια USD)'},
-                                {'label': 'Πληθυσμός (Εκατομμύρια)', 'value': 'Πληθυσμός (Εκατομμύρια)'}
-                            ],
-                            value='Πληθυσμός (Εκατομμύρια)',
-                            style={'width': '100%', 'marginTop': '10px'}
-                        )
-                    ]
-                ),
-                html.Div(
-                    style={'width': '80%', 'backgroundColor': 'white', 'padding': '20px', 'borderRadius': '10px', 'boxShadow': '0 4px 6px rgba(0,0,0,0.1)'},
-                    children=[
-                        dcc.Graph(
-                            id='grafico-dinamico'
-                        )
-                    ]
-                )
-            ]
+def generate_forecast_plot(data, symbol='BTC-USD', periods=180):
+    """
+    Δημιουργεί ένα γράφημα πρόβλεψης τιμών κρυπτονομισμάτων χρησιμοποιώντας το Prophet.
+    """
+    try:
+        logging.info(f"Δημιουργία γραφήματος πρόβλεψης για το σύμβολο: {symbol}...")
+        
+        # Δημιουργία μοντέλου Prophet και προσαρμογή του στα δεδομένα
+        m = Prophet(
+            daily_seasonality=True,
+            weekly_seasonality=True,
+            yearly_seasonality=True,
+            changepoint_prior_scale=0.05
         )
-    ]
-)
+        m.fit(data)
 
-# Callback για την ενημέρωση του γραφήματος
-@app.callback(
-    Output('grafico-dinamico', 'figure'),
-    [Input('dropdown-eixo-x', 'value'),
-     Input('dropdown-eixo-y', 'value')]
-)
-def update_graph(eixo_x, eixo_y):
-    """Ενημερώνει το γράφημα με βάση τις επιλογές του χρήστη."""
-    logging.info(f"Ενημέρωση γραφήματος με X='{eixo_x}' και Y='{eixo_y}'")
-    fig = px.bar(
-        df_sample,
-        x=eixo_x,
-        y=eixo_y,
-        color='Χώρα',
-        title=f"Γράφημα {eixo_y} έναντι {eixo_x}",
-        height=500
+        # Δημιουργία ενός DataFrame για τη μελλοντική πρόβλεψη
+        future = m.make_future_dataframe(periods=periods)
+        forecast = m.predict(future)
+
+        # Δημιουργία γραφήματος με το Plotly
+        fig = go.Figure()
+        
+        # Προσθήκη ιστορικών τιμών
+        fig.add_trace(go.Scatter(
+            x=data['ds'],
+            y=data['y'],
+            mode='lines',
+            name='Ιστορικές Τιμές',
+            line=dict(color='#008080')
+        ))
+        
+        # Προσθήκη πρόβλεψης
+        fig.add_trace(go.Scatter(
+            x=forecast['ds'],
+            y=forecast['yhat'],
+            mode='lines',
+            name='Πρόβλεψη',
+            line=dict(color='#8A2BE2', dash='dash')
+        ))
+        
+        # Προσθήκη του εύρους εμπιστοσύνης (confidence interval)
+        fig.add_trace(go.Scatter(
+            x=forecast['ds'],
+            y=forecast['yhat_upper'],
+            mode='lines',
+            name='Ανώτερο Όριο',
+            line=dict(color='rgba(138, 43, 226, 0.2)', width=0),
+            fill=None
+        ))
+        fig.add_trace(go.Scatter(
+            x=forecast['ds'],
+            y=forecast['yhat_lower'],
+            mode='lines',
+            name='Κατώτερο Όριο',
+            fill='tonexty',
+            fillcolor='rgba(138, 43, 226, 0.2)',
+            line=dict(color='rgba(138, 43, 226, 0.2)', width=0)
+        ))
+
+        fig.update_layout(
+            title=f'Πρόβλεψη Τιμής {symbol} για τους επόμενους {periods} ημέρες',
+            xaxis_title='Ημερομηνία',
+            yaxis_title='Τιμή (USD)',
+            template='plotly_white',
+            xaxis_rangeslider_visible=True,
+            showlegend=True
+        )
+        return fig
+    except Exception as e:
+        logging.error(f"Σφάλμα κατά τη δημιουργία του γραφήματος πρόβλεψης: {e}")
+        return create_error_plot(f"Σφάλμα: {e}")
+
+def create_error_plot(error_message):
+    """
+    Δημιουργεί ένα απλό γράφημα Plotly με ένα μήνυμα σφάλματος.
+    """
+    fig = go.Figure()
+    fig.add_annotation(
+        text=f"Σφάλμα: {error_message}",
+        xref="paper",
+        yref="paper",
+        showarrow=False,
+        font=dict(size=20, color="red")
     )
     fig.update_layout(
-        plot_bgcolor='white',
-        paper_bgcolor='white',
-        font_color='#333',
-        title_font_size=20
+        title_text="Σφάλμα Δημιουργίας Γραφήματος",
+        xaxis_showgrid=False,
+        yaxis_showgrid=False,
+        xaxis_visible=False,
+        yaxis_visible=False
     )
     return fig
 
-@server.route('/api/plot_data', methods=['POST'])
-def get_plot_data():
+@app.route('/', methods=['GET'])
+def index():
+    """
+    Χειρίζεται την αρχική αίτηση για την κύρια σελίδα.
+    Επιστρέφει το index.html.
+    """
+    logging.info("Αίτηση για την κύρια σελίδα ('/'). Επιστροφή index.html.")
+    now = datetime.datetime.now()
+    last_updated_time = now.strftime("%Y-%m-%d %H:%M:%S")
+
+    # Αρχική δημιουργία γραφήματος για το BTC-USD
     try:
-        data = request.get_json()
-        logging.info(f"Ελήφθησαν δεδομένα για το γράφημα: {data}")
+        data = get_crypto_data(symbol='BTC-USD')
+        fig = generate_forecast_plot(data, symbol='BTC-USD')
+        plot_html = plot(fig, output_type='div', include_plotlyjs=True, config={'displayModeBar': False})
+    except Exception as e:
+        logging.error(f"Σφάλμα στην αρχική δημιουργία γραφήματος: {e}")
+        fig = create_error_plot(str(e))
+        plot_html = plot(fig, output_type='div', include_plotlyjs=True, config={'displayModeBar': False})
+
+    return render_template(
+        'index.html',
+        plot_html=plot_html,
+        last_updated=last_updated_time,
+        current_coin='BTC-USD'
+    )
+
+@app.route('/forecast', methods=['POST'])
+def forecast():
+    """
+    Χειρίζεται την αίτηση POST για τη δημιουργία νέας πρόβλεψης.
+    Επιστρέφει το HTML του γραφήματος ως JSON.
+    """
+    logging.info("Ελήφθη αίτηση για νέα πρόβλεψη.")
+    
+    selected_coin = request.json.get('coin_symbol', 'BTC-USD')
+    logging.info(f"Δημιουργία πρόβλεψης για: {selected_coin}")
+
+    try:
+        data = get_crypto_data(symbol=selected_coin)
         
-        # Προσομοίωση δημιουργίας γραφήματος με βάση τα δεδομένα
-        df = pd.DataFrame(data['data'])
-        x_col = data['x_column']
-        y_col = data['y_column']
-        
-        fig = px.bar(
-            df,
-            x=x_col,
-            y=y_col,
-            title=f"Γράφημα {y_col} έναντι {x_col}",
-            height=400
-        )
-        
-        # Μετατροπή του γραφήματος σε HTML
-        plot_html = fig.to_html(full_html=False, include_plotlyjs=False)
-        return jsonify({'plot_html': plot_html})
+        if data is None or data.empty:
+            error_message = f"Δεν βρέθηκαν δεδομένα για το σύμβολο: {selected_coin}. Παρακαλώ δοκιμάστε ένα άλλο σύμβολο."
+            logging.error(error_message)
+            fig = create_error_plot(error_message)
+            plot_html = plot(fig, output_type='div', include_plotlyjs=True, config={'displayModeBar': False})
+            return jsonify({'plot_html': plot_html, 'error': error_message})
+        else:
+            fig = generate_forecast_plot(data, symbol=selected_coin)
+            plot_html = plot(
+                fig,
+                output_type='div',
+                include_plotlyjs=True,
+                config={'displayModeBar': False}
+            )
+            logging.info("Η HTML του γραφήματος δημιουργήθηκε με επιτυχία.")
+            return jsonify({'plot_html': plot_html, 'error': None})
 
     except Exception as e:
-        # Χειρισμός σφαλμάτων κατά τη διαδικασία και επιστροφή μηνύματος σφάλματος
         logging.error(f"Σφάλμα κατά τη δημιουργία του γραφήματος: {e}")
-        return jsonify({'error': str(e)}), 500
+        error_message = str(e)
+        fig = create_error_plot(error_message)
+        plot_html = plot(fig, output_type='div', include_plotlyjs=True, config={'displayModeBar': False})
+        return jsonify({'plot_html': plot_html, 'error': error_message})
 
 if __name__ == '__main__':
-    server.run(host='0.0.0.0', port=8050, debug=True)
+    app.run(host='0.0.0.0', port=PORT, debug=False)
