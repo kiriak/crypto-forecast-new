@@ -10,7 +10,6 @@ import json
 import requests
 import warnings
 import time
-import yfinance as yf
 
 # Suppress FutureWarning from Prophet
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -29,32 +28,51 @@ else:
     logging.info("Running on Render. Using PORT environment variable.")
     PORT = os.environ.get("PORT", 10000)
 
-def get_crypto_data(symbol='BTC-USD', period_days='730'):
+# ==============================================================================
+# ATTENTION: ADD YOUR OWN API KEY FROM COINAPI HERE
+# Get a free key at https://www.coinapi.io
+# ==============================================================================
+# CORRECTED LINE: API key must be a string, enclosed in quotes.
+API_KEY = "f142a994-4800-4c42-8bf7-825f7bbcc932"
+
+def get_crypto_data(symbol='BTC', period_days='730'):
     """
-    Fetches historical cryptocurrency data using yfinance.
-    It returns a pandas DataFrame with 'ds' and 'y' columns.
+    Fetches historical cryptocurrency data from the CoinAPI.
     """
-    logging.info(f"Fetching data for symbol: {symbol} using yfinance...")
-    try:
-        # yfinance expects symbols in the format 'BTC-USD'
-        end_date = datetime.date.today()
-        start_date = end_date - datetime.timedelta(days=int(period_days))
-        
-        data = yf.download(symbol, start=start_date, end=end_date)
+    end_date = datetime.datetime.now()
+    start_date = end_date - datetime.timedelta(days=int(period_days))
+    
+    url = f"https://rest.coinapi.io/v1/ohlcv/{symbol}/USD/history?period_id=1DAY&time_start={start_date.isoformat()}&time_end={end_date.isoformat()}"
+    headers = {'X-CoinAPI-Key': API_KEY}
 
-        if data.empty:
-            logging.warning(f"No data found for symbol {symbol} using yfinance.")
-            return pd.DataFrame()
+    retries = 3
+    for i in range(retries):
+        try:
+            logging.info(f"Fetching data for symbol: {symbol} from CoinAPI (Attempt {i+1}/{retries})...")
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            
+            if not data:
+                logging.warning(f"No data found for symbol {symbol} on attempt {i+1}. Retrying...")
+                time.sleep(2)
+                continue
 
-        df = pd.DataFrame(data['Adj Close'])
-        df.reset_index(inplace=True)
-        df.rename(columns={'Date': 'ds', 'Adj Close': 'y'}, inplace=True)
-        return df
-    except Exception as e:
-        logging.error(f"Error fetching data with yfinance for symbol {symbol}: {e}")
-        return pd.DataFrame()
+            df = pd.DataFrame(data)
+            df['time_close'] = pd.to_datetime(df['time_close'])
+            df.rename(columns={'time_close': 'ds', 'price_close': 'y'}, inplace=True)
+            return df
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Error fetching data from API on attempt {i+1}: {e}")
+            time.sleep(2)
+        except Exception as e:
+            logging.error(f"General error processing data on attempt {i+1}: {e}")
+            time.sleep(2)
+    
+    logging.error("Failed to fetch data after multiple attempts.")
+    return pd.DataFrame()
 
-def generate_forecast_plot(data, symbol='BTC-USD', periods=180):
+def generate_forecast_plot(data, symbol='BTC', periods=180):
     """
     Generates a cryptocurrency price forecast plot using Prophet.
     """
@@ -109,7 +127,7 @@ def generate_forecast_plot(data, symbol='BTC-USD', periods=180):
         ))
 
         fig.update_layout(
-            title=f'Price Forecast for {symbol.replace("-USD", "")} for the next {periods} days',
+            title=f'Price Forecast for {symbol.capitalize()} for the next {periods} days',
             xaxis_title='Date',
             yaxis_title='Price (USD)',
             template='plotly_white',
@@ -153,16 +171,16 @@ def index():
     last_updated_time = now.strftime("%Y-%m-%d %H:%M:%S")
 
     try:
-        data = get_crypto_data(symbol='BTC-USD')
+        data = get_crypto_data(symbol='BTC')
         if data.empty:
             error_message = "Could not fetch data for Bitcoin. Please try another coin."
             fig = create_error_plot(error_message)
             plot_html = plot(fig, output_type='div', include_plotlyjs=True, config={'displayModeBar': False})
             current_coin = 'Error'
         else:
-            fig = generate_forecast_plot(data, symbol='BTC-USD')
+            fig = generate_forecast_plot(data, symbol='BTC')
             plot_html = plot(fig, output_type='div', include_plotlyjs=True, config={'displayModeBar': False})
-            current_coin = 'BTC-USD'
+            current_coin = 'BTC'
     except Exception as e:
         logging.error(f"Error in initial plot generation: {e}")
         fig = create_error_plot(str(e))
@@ -184,7 +202,7 @@ def forecast():
     """
     logging.info("Received request for new forecast.")
     
-    selected_coin = request.json.get('coin_symbol', 'BTC-USD')
+    selected_coin = request.json.get('coin_symbol', 'BTC')
     logging.info(f"Generating forecast for: {selected_coin}")
 
     try:

@@ -1,6 +1,10 @@
-flask
-plotly
-pandas
-prophet
-requests
-yfinance
+Flask==2.3.2
+gunicorn==21.2.0
+pandas==2.0.3
+numpy==1.24.3
+prophet==1.1.5
+yfinance==0.2.36
+matplotlib==3.10.3
+plotly==5.15.0
+scipy==1.10.1
+holidays==0.77
