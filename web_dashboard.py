@@ -11,36 +11,34 @@ import requests
 import warnings
 import time
 
-# Παράκαμψη της FutureWarning από το Prophet
+# Suppress FutureWarning from Prophet
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-# Ρύθμιση της καταγραφής (logging)
+# Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logging.info("Εκκίνηση της εφαρμογής Flask...")
+logging.info("Starting Flask application...")
 
 app = Flask(__name__, template_folder='templates')
 
-# Έλεγχος αν εκτελείται στο Render για τη σωστή θύρα
+# Check if running on Render for correct port
 if not os.environ.get("RENDER"):
-    logging.warning("Δεν εκτελείται στο Render. Χρήση προεπιλεγμένης θύρας.")
+    logging.warning("Not running on Render. Using default port.")
     PORT = 8080
 else:
-    logging.info("Εκτελείται στο Render. Χρήση της μεταβλητής περιβάλλοντος PORT.")
+    logging.info("Running on Render. Using PORT environment variable.")
     PORT = os.environ.get("PORT", 10000)
 
 # ==============================================================================
-# ΠΡΟΣΟΧΗ: ΠΡΟΣΘΕΣΕ ΕΔΩ ΤΟ ΔΙΚΟ ΣΟΥ API KEY ΑΠΟ ΤΟ COINAPI
-# Δημιούργησε ένα δωρεάν κλειδί στο https://www.coinapi.io
+# ATTENTION: ADD YOUR OWN API KEY FROM COINAPI HERE
+# Get a free key at https://www.coinapi.io
 # ==============================================================================
-API_KEY = 6ce7f7f2-f70b-4fb6-85ab-e3b215ec4444
+# CORRECTED LINE: API key must be a string, enclosed in quotes.
+API_KEY = "6ce7f7f2-f70b-4fb6-85ab-e3b215ec4444"
 
 def get_crypto_data(symbol='BTC', period_days='730'):
     """
-    Ανακτά ιστορικά δεδομένα κρυπτονομισμάτων από το CoinAPI.
+    Fetches historical cryptocurrency data from the CoinAPI.
     """
-    # Το CoinAPI απαιτεί το σύμβολο με μορφή 'ASSET_ID_EXCHANGE'. Χρησιμοποιούμε 'USD'
-    # και το ανταλλακτήριο 'COINBASE' για σταθερότητα.
-    # Επίσης, η ημερομηνία έναρξης υπολογίζεται από το period_days
     end_date = datetime.datetime.now()
     start_date = end_date - datetime.timedelta(days=int(period_days))
     
@@ -50,37 +48,36 @@ def get_crypto_data(symbol='BTC', period_days='730'):
     retries = 3
     for i in range(retries):
         try:
-            logging.info(f"Ανάκτηση δεδομένων για το σύμβολο: {symbol} από CoinAPI (Προσπάθεια {i+1}/{retries})...")
+            logging.info(f"Fetching data for symbol: {symbol} from CoinAPI (Attempt {i+1}/{retries})...")
             response = requests.get(url, headers=headers, timeout=10)
             response.raise_for_status()
             data = response.json()
             
             if not data:
-                logging.warning(f"Δεν βρέθηκαν δεδομένα για το σύμβολο {symbol} στην προσπάθεια {i+1}. Δοκιμάζω ξανά...")
+                logging.warning(f"No data found for symbol {symbol} on attempt {i+1}. Retrying...")
                 time.sleep(2)
                 continue
 
-            # Μετατροπή των δεδομένων σε DataFrame
             df = pd.DataFrame(data)
             df['time_close'] = pd.to_datetime(df['time_close'])
             df.rename(columns={'time_close': 'ds', 'price_close': 'y'}, inplace=True)
             return df
         except requests.exceptions.RequestException as e:
-            logging.error(f"Σφάλμα κατά την ανάκτηση δεδομένων από το API στην προσπάθεια {i+1}: {e}")
+            logging.error(f"Error fetching data from API on attempt {i+1}: {e}")
             time.sleep(2)
         except Exception as e:
-            logging.error(f"Γενικό σφάλμα κατά την επεξεργασία δεδομένων στην προσπάθεια {i+1}: {e}")
+            logging.error(f"General error processing data on attempt {i+1}: {e}")
             time.sleep(2)
     
-    logging.error("Αποτυχία ανάκτησης δεδομένων μετά από πολλαπλές προσπάθειες.")
+    logging.error("Failed to fetch data after multiple attempts.")
     return pd.DataFrame()
 
-def generate_forecast_plot(data, symbol='bitcoin', periods=180):
+def generate_forecast_plot(data, symbol='BTC', periods=180):
     """
-    Δημιουργεί ένα γράφημα πρόβλεψης τιμών κρυπτονομισμάτων χρησιμοποιώντας το Prophet.
+    Generates a cryptocurrency price forecast plot using Prophet.
     """
     try:
-        logging.info(f"Δημιουργία γραφήματος πρόβλεψης για το σύμβολο: {symbol}...")
+        logging.info(f"Generating forecast plot for symbol: {symbol}...")
         
         m = Prophet(
             daily_seasonality=True,
@@ -99,7 +96,7 @@ def generate_forecast_plot(data, symbol='bitcoin', periods=180):
             x=data['ds'],
             y=data['y'],
             mode='lines',
-            name='Ιστορικές Τιμές',
+            name='Historical Prices',
             line=dict(color='#008080')
         ))
         
@@ -107,7 +104,7 @@ def generate_forecast_plot(data, symbol='bitcoin', periods=180):
             x=forecast['ds'],
             y=forecast['yhat'],
             mode='lines',
-            name='Πρόβλεψη',
+            name='Forecast',
             line=dict(color='#8A2BE2', dash='dash')
         ))
         
@@ -115,7 +112,7 @@ def generate_forecast_plot(data, symbol='bitcoin', periods=180):
             x=forecast['ds'],
             y=forecast['yhat_upper'],
             mode='lines',
-            name='Ανώτερο Όριο',
+            name='Upper Bound',
             line=dict(color='rgba(138, 43, 226, 0.2)', width=0),
             fill=None
         ))
@@ -123,39 +120,39 @@ def generate_forecast_plot(data, symbol='bitcoin', periods=180):
             x=forecast['ds'],
             y=forecast['yhat_lower'],
             mode='lines',
-            name='Κατώτερο Όριο',
+            name='Lower Bound',
             fill='tonexty',
             fillcolor='rgba(138, 43, 226, 0.2)',
             line=dict(color='rgba(138, 43, 226, 0.2)', width=0)
         ))
 
         fig.update_layout(
-            title=f'Πρόβλεψη Τιμής {symbol.capitalize()} για τους επόμενους {periods} ημέρες',
-            xaxis_title='Ημερομηνία',
-            yaxis_title='Τιμή (USD)',
+            title=f'Price Forecast for {symbol.capitalize()} for the next {periods} days',
+            xaxis_title='Date',
+            yaxis_title='Price (USD)',
             template='plotly_white',
             xaxis_rangeslider_visible=True,
             showlegend=True
         )
         return fig
     except Exception as e:
-        logging.error(f"Σφάλμα κατά τη δημιουργία του γραφήματος πρόβλεψης: {e}")
-        return create_error_plot(f"Σφάλμα: {e}")
+        logging.error(f"Error generating forecast plot: {e}")
+        return create_error_plot(f"Error: {e}")
 
 def create_error_plot(error_message):
     """
-    Δημιουργεί ένα απλό γράφημα Plotly με ένα μήνυμα σφάλματος.
+    Creates a simple Plotly plot with an error message.
     """
     fig = go.Figure()
     fig.add_annotation(
-        text=f"Σφάλμα: {error_message}",
+        text=f"Error: {error_message}",
         xref="paper",
         yref="paper",
         showarrow=False,
         font=dict(size=20, color="red")
     )
     fig.update_layout(
-        title_text="Σφάλμα Δημιουργίας Γραφήματος",
+        title_text="Error Generating Plot",
         xaxis_showgrid=False,
         yaxis_showgrid=False,
         xaxis_visible=False,
@@ -166,18 +163,17 @@ def create_error_plot(error_message):
 @app.route('/', methods=['GET'])
 def index():
     """
-    Χειρίζεται την αρχική αίτηση για την κύρια σελίδα.
-    Επιστρέφει το index.html.
+    Handles the initial request for the main page.
+    Returns index.html.
     """
-    logging.info("Αίτηση για την κύρια σελίδα ('/'). Επιστροφή index.html.")
+    logging.info("Request for main page ('/'). Returning index.html.")
     now = datetime.datetime.now()
     last_updated_time = now.strftime("%Y-%m-%d %H:%M:%S")
 
-    # Αρχική δημιουργία γραφήματος για το bitcoin
     try:
         data = get_crypto_data(symbol='BTC')
         if data.empty:
-            error_message = "Δεν ήταν δυνατή η λήψη δεδομένων για το Bitcoin. Παρακαλώ δοκιμάστε ένα άλλο νόμισμα."
+            error_message = "Could not fetch data for Bitcoin. Please try another coin."
             fig = create_error_plot(error_message)
             plot_html = plot(fig, output_type='div', include_plotlyjs=True, config={'displayModeBar': False})
             current_coin = 'Error'
@@ -186,7 +182,7 @@ def index():
             plot_html = plot(fig, output_type='div', include_plotlyjs=True, config={'displayModeBar': False})
             current_coin = 'BTC'
     except Exception as e:
-        logging.error(f"Σφάλμα στην αρχική δημιουργία γραφήματος: {e}")
+        logging.error(f"Error in initial plot generation: {e}")
         fig = create_error_plot(str(e))
         plot_html = plot(fig, output_type='div', include_plotlyjs=True, config={'displayModeBar': False})
         current_coin = 'Error'
@@ -201,19 +197,19 @@ def index():
 @app.route('/forecast', methods=['POST'])
 def forecast():
     """
-    Χειρίζεται την αίτηση POST για τη δημιουργία νέας πρόβλεψης.
-    Επιστρέφει το HTML του γραφήματος ως JSON.
+    Handles the POST request to generate a new forecast.
+    Returns the plot's HTML as JSON.
     """
-    logging.info("Ελήφθη αίτηση για νέα πρόβλεψη.")
+    logging.info("Received request for new forecast.")
     
     selected_coin = request.json.get('coin_symbol', 'BTC')
-    logging.info(f"Δημιουργία πρόβλεψης για: {selected_coin}")
+    logging.info(f"Generating forecast for: {selected_coin}")
 
     try:
         data = get_crypto_data(symbol=selected_coin)
         
         if data is None or data.empty:
-            error_message = f"Δεν βρέθηκαν δεδομένα για το σύμβολο: {selected_coin}. Παρακαλώ δοκιμάστε ένα άλλο σύμβολο."
+            error_message = f"No data found for symbol: {selected_coin}. Please try another symbol."
             logging.error(error_message)
             fig = create_error_plot(error_message)
             plot_html = plot(fig, output_type='div', include_plotlyjs=True, config={'displayModeBar': False})
@@ -226,11 +222,11 @@ def forecast():
                 include_plotlyjs=True,
                 config={'displayModeBar': False}
             )
-            logging.info("Η HTML του γραφήματος δημιουργήθηκε με επιτυχία.")
+            logging.info("Plot HTML generated successfully.")
             return jsonify({'plot_html': plot_html, 'error': None})
 
     except Exception as e:
-        logging.error(f"Σφάλμα κατά τη δημιουργία του γραφήματος: {e}")
+        logging.error(f"Error during plot generation: {e}")
         error_message = str(e)
         fig = create_error_plot(error_message)
         plot_html = plot(fig, output_type='div', include_plotlyjs=True, config={'displayModeBar': False})
