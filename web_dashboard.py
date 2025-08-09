@@ -31,7 +31,7 @@ else:
 def get_crypto_data(symbol='bitcoin', period_days='730'):
     """
     Ανακτά ιστορικά δεδομένα κρυπτονομισμάτων από το CoinGecko API.
-    Χρησιμοποιεί requests για πιο αξιόπιστη λήψη δεδομένων.
+    Χρησιμοποιεί requests για πιο αξιόπιστη λήψη δεδομένων, με καθυστέρηση μεταξύ των επαναλήψεων.
     """
     url = f"https://api.coingecko.com/api/v3/coins/{symbol}/market_chart?vs_currency=usd&days={period_days}"
     retries = 3
@@ -44,7 +44,7 @@ def get_crypto_data(symbol='bitcoin', period_days='730'):
             
             if 'prices' not in data or not data['prices']:
                 logging.warning(f"Δεν βρέθηκαν δεδομένα για το σύμβολο {symbol} στην προσπάθεια {i+1}. Δοκιμάζω ξανά...")
-                time.sleep(2)
+                time.sleep(2)  # Καθυστέρηση πριν την επόμενη προσπάθεια
                 continue
 
             # Μετατροπή των δεδομένων σε DataFrame
@@ -54,10 +54,10 @@ def get_crypto_data(symbol='bitcoin', period_days='730'):
             return df
         except requests.exceptions.RequestException as e:
             logging.error(f"Σφάλμα κατά την ανάκτηση δεδομένων από το API στην προσπάθεια {i+1}: {e}")
-            time.sleep(2)
+            time.sleep(2)  # Καθυστέρηση πριν την επόμενη προσπάθεια
         except Exception as e:
             logging.error(f"Γενικό σφάλμα κατά την επεξεργασία δεδομένων στην προσπάθεια {i+1}: {e}")
-            time.sleep(2)
+            time.sleep(2)  # Καθυστέρηση πριν την επόμενη προσπάθεια
     
     logging.error("Αποτυχία ανάκτησης δεδομένων μετά από πολλαπλές προσπάθειες.")
     return pd.DataFrame()
