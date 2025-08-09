@@ -8,3 +8,6 @@ matplotlib==3.7.5
 plotly==5.15.0
 scipy==1.10.1
 holidays==0.77
+dash
+dash-core-components
+dash-html-components
